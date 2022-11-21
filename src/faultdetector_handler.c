@@ -140,10 +140,13 @@ void FAULTDET_testing_commitTmpStatsAndReset(u8 injectingFault) {
 						FAULTDET_testing_falseNegatives_wtolerance++;
 					else
 						FAULTDET_testing_ok_wtolerance++;
-					//				for (int i=0; i<FAULTDET_testing_relativeErrors_size; i++) {
-					//					printf("%f;", FAULTDET_testing_relativeErrors[i]);
-					//				}
-					//					printf("%f;", FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]);
+//									for (int i=0; i<FAULTDET_testing_relativeErrors_size; i++) {
+//										printf("%f;", FAULTDET_testing_relativeErrors[i]);
+//									}
+					if (FAULTDET_testing_falseNegatives==1)
+						printf("%f", FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]);
+					else
+						printf(",%f", FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]);
 				} else {
 					FAULTDET_testing_ok++;
 					FAULTDET_testing_ok_wtolerance++;

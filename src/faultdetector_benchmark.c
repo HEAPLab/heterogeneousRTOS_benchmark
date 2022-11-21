@@ -406,6 +406,7 @@ void latnav(int roundId, int executionId) {
 
 #endif
 
+#include <locale.h>
 int main(int argc, char * const argv[])
 {
 	int executions, regs, trainIter;
@@ -419,7 +420,6 @@ int main(int argc, char * const argv[])
 	char executionsNext=0x0;
 
 	for (int i=1; i<argc; i++) {
-		printf(argv[i]);
 		if (strcmp(argv[i], "-r")==0) {
 			regNext=0xFF;
 		}
@@ -450,6 +450,10 @@ int main(int argc, char * const argv[])
 	if (trainIter==0)
 		trainIter=8096;
 
+	setlocale(LC_NUMERIC,"en_US.UTF-8");
+
+	printf("{\"regions\":%d, \"trainIterations\":%d, \"testIterations\":%d,  \"relerr\": [", regs, trainIter, executions);
+
 #ifndef dynamicRegions
 	for (int i=0; i<FAULTDETECTOR_MAX_CHECKS; i++) {
 		n_regions[i]=0;
@@ -470,7 +474,7 @@ int main(int argc, char * const argv[])
 #endif
 
 
-	printf("start\n");
+//	printf("start\n");
 
 	random_set_seed(1);
 
@@ -507,15 +511,27 @@ int main(int argc, char * const argv[])
 		//#endif
 		//			FAULTDET_hotUpdateRegions(trainedRegions, n_regions);
 	}
-	printf("\ntotal for fp: %d\n", FAULTDET_testing_getTotal_golden());
-	printf("ok for fp: %d\n", FAULTDET_testing_getOk_golden());
-	printf("fp: %d\n", FAULTDET_testing_getFalsePositives_golden());
+	printf("], ");
+	printf("\"total_golden\": %d, ", FAULTDET_testing_getTotal_golden());
+	printf("\"ok_golden\": %d, ", FAULTDET_testing_getOk_golden());
+	printf("\"fp_golden\": %d, ", FAULTDET_testing_getFalsePositives_golden());
 
-	printf("total for fn: %d\n", FAULTDET_testing_getTotal());
-	printf("ok for fn: %d\n", FAULTDET_testing_getOk());
-	printf("fn: %d\n", FAULTDET_testing_getFalseNegatives());
-	printf("ok for fn with tolerance: %d\n", FAULTDET_testing_getOk_wtolerance());
-	printf("fn with tolerance: %d\n", FAULTDET_testing_getFalseNegatives_wtolerance());
-	printf("no effects: %d\n", FAULTDET_testing_getNoEffects());
+	printf("\"total\":%d, ", FAULTDET_testing_getTotal());
+	printf("\"ok\": %d, ", FAULTDET_testing_getOk());
+	printf("\"fp\":%d, ", FAULTDET_testing_getFalseNegatives());
+//	printf("%d|", FAULTDET_testing_getOk_wtolerance());
+//	printf("%d|", FAULTDET_testing_getFalseNegatives_wtolerance());
+	printf("\"no_effects\": %d", FAULTDET_testing_getNoEffects());
+	printf("}");
+//	printf("\ntotal for fp: %d\n", FAULTDET_testing_getTotal_golden());
+//	printf("ok for fp: %d\n", FAULTDET_testing_getOk_golden());
+//	printf("fp: %d\n", FAULTDET_testing_getFalsePositives_golden());
+//
+//	printf("total for fn: %d\n", FAULTDET_testing_getTotal());
+//	printf("ok for fn: %d\n", FAULTDET_testing_getOk());
+//	printf("fn: %d\n", FAULTDET_testing_getFalseNegatives());
+//	printf("ok for fn with tolerance: %d\n", FAULTDET_testing_getOk_wtolerance());
+//	printf("fn with tolerance: %d\n", FAULTDET_testing_getFalseNegatives_wtolerance());
+//	printf("no effects: %d\n", FAULTDET_testing_getNoEffects());
 	FAULTDETECTOR_SW_freeRegions();
 }
