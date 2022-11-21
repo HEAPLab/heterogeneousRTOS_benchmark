@@ -1,6 +1,9 @@
 #ifndef FAULTDETECTOR_SW_HEADER
 #define FAULTDETECTOR_SW_HEADER
 
+#define dynamicRegions
+
+
 #include "xil_types.h"
 
 //#define COMMAND_TEST 2
@@ -12,7 +15,11 @@
 
 #define FAULTDETECTOR_MAX_AOV_DIM 3
 
+#ifndef dynamicRegions
 #define FAULTDETECTOR_MAX_REGIONS 16
+#else
+unsigned int FAULTDETECTOR_MAX_REGIONS;
+#endif
 
 #define FAULTDETECTOR_THRESH_CONSTANT (1e-10f)
 
@@ -52,5 +59,10 @@ void FAULTDETECTOR_SW_dumpRegions(FAULTDETECTOR_region_t trainedRegions[FAULTDET
 
 char FAULTDETECTOR_SW_test(FAULTDETECTOR_controlStr* in);
 void FAULTDETECTOR_SW_train(FAULTDETECTOR_controlStr* in);
+
+#ifdef dynamicRegions
+void FAULTDETECTOR_SW_allocRegions(int number_of_regions);
+void FAULTDETECTOR_SW_freeRegions();
+#endif
 
 #endif

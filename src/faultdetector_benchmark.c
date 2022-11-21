@@ -16,6 +16,7 @@
 #include "xil_types.h"
 #include "simple_random.h"
 #include "faultdetector_handler.h"
+#include <string.h>
 
 u8 injectingErrors=0;
 float r1, r2, r3, r4;
@@ -201,30 +202,30 @@ void latnav(int roundId, int executionId) {
 					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
 		}
 
-				if (executionId<-1) {
-					FAULTDET_trainPoint(
-							1,
-							3,  //checkId
-							2,
-							&desired_roll, &actual_roll);
-				} else {
-					FAULTDET_testPoint(
-		#ifndef FAULTDETECTOR_EXECINSW
-							&inst,
-		#endif
-							1, //uniId
-							3, //checkId
-							0, //BLOCKING OR NON BLOCKING, non blocking
-		#ifdef testingCampaign
-							injectingErrors,
-							1,
-							1,
-							roundId,
-							executionId,
-		#endif
-							2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-							&desired_roll, &actual_roll);
-				}
+		if (executionId<-1) {
+			FAULTDET_trainPoint(
+					1,
+					3,  //checkId
+					2,
+					&desired_roll, &actual_roll);
+		} else {
+			FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+					&inst,
+#endif
+					1, //uniId
+					3, //checkId
+					0, //BLOCKING OR NON BLOCKING, non blocking
+#ifdef testingCampaign
+					injectingErrors,
+					1,
+					1,
+					roundId,
+					executionId,
+#endif
+					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					&desired_roll, &actual_roll);
+		}
 
 
 
@@ -262,30 +263,30 @@ void latnav(int roundId, int executionId) {
 					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
 		}
 
-				if (executionId<-1) {
-					FAULTDET_trainPoint(
-							1,
-							4,  //checkId
-							3,
-							&actual_roll_rate, &curr_roll, &desired_roll_rate);
-				} else {
-					FAULTDET_testPoint(
-		#ifndef FAULTDETECTOR_EXECINSW
-							&inst,
-		#endif
-							1, //uniId
-							4, //checkId
-							0, //BLOCKING OR NON BLOCKING, non blocking
-		#ifdef testingCampaign
-							injectingErrors,
-							0,
-							0,
-							roundId,
-							executionId,
-		#endif
-							3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-							&actual_roll_rate, &curr_roll, &desired_roll_rate);
-				}
+		if (executionId<-1) {
+			FAULTDET_trainPoint(
+					1,
+					4,  //checkId
+					3,
+					&actual_roll_rate, &curr_roll, &desired_roll_rate);
+		} else {
+			FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+					&inst,
+#endif
+					1, //uniId
+					4, //checkId
+					0, //BLOCKING OR NON BLOCKING, non blocking
+#ifdef testingCampaign
+					injectingErrors,
+					0,
+					0,
+					roundId,
+					executionId,
+#endif
+					3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					&actual_roll_rate, &curr_roll, &desired_roll_rate);
+		}
 
 		pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
 		pid_roll_backpropagation_orig=pid_roll.backpropagation;
@@ -321,30 +322,30 @@ void latnav(int roundId, int executionId) {
 		}
 
 
-				if (executionId<-1) {
-					FAULTDET_trainPoint(
-							1,
-							5,  //checkId
-							2,
-							&desired_ailerons, &actual_ailerons);
-				} else {
-					FAULTDET_testPoint(
-		#ifndef FAULTDETECTOR_EXECINSW
-							&inst,
-		#endif
-							1, //uniId
-							5, //checkId
-							0, //BLOCKING OR NON BLOCKING, non blocking
-		#ifdef testingCampaign
-							injectingErrors,
-							1,
-							1,
-							roundId,
-							executionId,
-		#endif
-							2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-							&desired_ailerons, &actual_ailerons);
-				}
+		if (executionId<-1) {
+			FAULTDET_trainPoint(
+					1,
+					5,  //checkId
+					2,
+					&desired_ailerons, &actual_ailerons);
+		} else {
+			FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+					&inst,
+#endif
+					1, //uniId
+					5, //checkId
+					0, //BLOCKING OR NON BLOCKING, non blocking
+#ifdef testingCampaign
+					injectingErrors,
+					1,
+					1,
+					roundId,
+					executionId,
+#endif
+					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					&desired_ailerons, &actual_ailerons);
+		}
 
 		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
@@ -405,21 +406,79 @@ void latnav(int roundId, int executionId) {
 
 #endif
 
-
-
-
-
-
-int main(void)
+int main(int argc, char * const argv[])
 {
+	int executions, regs, trainIter;
+
+	executions=0;
+	regs=0;
+	trainIter=0;
+
+	char regNext=0x0;
+	char trainNext=0x0;
+	char executionsNext=0x0;
+
+	for (int i=1; i<argc; i++) {
+		printf(argv[i]);
+		if (strcmp(argv[i], "-r")==0) {
+			regNext=0xFF;
+		}
+		else if (strcmp(argv[i], "-t")==0) {
+			trainNext=0xFF;
+		}
+		else if (strcmp(argv[i], "-e")==0) {
+			executionsNext=0xFF;
+		}
+		else if (regNext) {
+			regs=atoi(argv[i]);
+			regNext=0x0;
+		}
+		else if (trainNext) {
+			trainIter=atoi(argv[i]);
+			trainNext=0x0;
+		}
+		else if (executionsNext) {
+			executions=atoi(argv[i]);
+			executionsNext=0x0;
+		}
+	}
+
+	if (executions==0)
+		executions=4000;
+	if (regs==0)
+		regs=16;
+	if (trainIter==0)
+		trainIter=8096;
+
+#ifndef dynamicRegions
+	for (int i=0; i<FAULTDETECTOR_MAX_CHECKS; i++) {
+		n_regions[i]=0;
+		for (int j=0; j<FAULTDETECTOR_MAX_REGIONS; j++) {
+			for (int k=0; k<FAULTDETECTOR_MAX_AOV_DIM; k++) {
+				trainedRegions[i][j].center[k]=0.0;
+				//				trainedRegions[i][j].max[k]=100.0;
+				//				trainedRegions[i][j].min[k]=-100.0;
+				trainedRegions[i][j].max[k]=0.0;
+				trainedRegions[i][j].min[k]=0.0;
+			}
+		}
+
+	}
+	FAULTDETECTOR_SW_initRegions(trainedRegions, n_regions);
+#else
+	FAULTDETECTOR_SW_allocRegions(regs);
+#endif
+
+
 	printf("start\n");
+
 	random_set_seed(1);
 
 	//	for (int i=0; i<1000; i++) {
 	//		injectingErrors=0x0;
 
 
-	for (int executionId=-8096 ;executionId<-1/*960*/; executionId++) {
+	for (int executionId=-trainIter-1 ;executionId<-1/*960*/; executionId++) {
 		r1=random_get();
 		r2=random_get();
 		r3=random_get();
@@ -427,7 +486,7 @@ int main(void)
 		latnav(0, executionId);
 	}
 
-	for (int i=0; i<4000; i++) {
+	for (int i=0; i<executions; i++) {
 		FAULTDET_testing_resetGoldens();
 		injectingErrors=0x0;
 		r1=random_get();
@@ -458,4 +517,5 @@ int main(void)
 	printf("ok for fn with tolerance: %d\n", FAULTDET_testing_getOk_wtolerance());
 	printf("fn with tolerance: %d\n", FAULTDET_testing_getFalseNegatives_wtolerance());
 	printf("no effects: %d\n", FAULTDET_testing_getNoEffects());
+	FAULTDETECTOR_SW_freeRegions();
 }

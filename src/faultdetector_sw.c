@@ -1,10 +1,16 @@
 #include "faultdetector_sw.h"
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 
 const float FAULTDETECTOR_THRESH=FAULTDETECTOR_THRESH_CONSTANT;
+#ifndef dynamicRegions
 static FAULTDETECTOR_region_t regionsGlob[FAULTDETECTOR_MAX_CHECKS][FAULTDETECTOR_MAX_REGIONS]; //regions from the distribution
+#else
+FAULTDETECTOR_region_t* regionsGlob[FAULTDETECTOR_MAX_CHECKS];
+#endif
 static u8 n_regionsGlob[FAULTDETECTOR_MAX_CHECKS];
+
 
 char hasRegion(const FAULTDETECTOR_region_t regions[FAULTDETECTOR_MAX_REGIONS], const u8 n_regions, const float d[FAULTDETECTOR_MAX_AOV_DIM]){
 	for(int i=0; i < n_regions; i++){
@@ -154,6 +160,30 @@ void insert_point(FAULTDETECTOR_region_t regions[FAULTDETECTOR_MAX_REGIONS], u8 
 		}
 	}
 }
+
+#ifdef dynamicRegions
+void FAULTDETECTOR_SW_allocRegions(int number_of_regions) {
+	FAULTDETECTOR_MAX_REGIONS=number_of_regions;
+	for (int i=0; i<FAULTDETECTOR_MAX_CHECKS; i++) {
+		n_regionsGlob[i]=0;
+		regionsGlob[i]=(FAULTDETECTOR_region_t*)calloc(number_of_regions, sizeof(FAULTDETECTOR_region_t));
+		//		for (int j=0; j<number_of_regions; j++) {
+		//			for (int k=0; k<FAULTDETECTOR_MAX_AOV_DIM; k++) {
+		//				regionsGlob[i][j].center[k]=0.0;
+		//				regionsGlob[i][j].max[k]=0.0;
+		//				regionsGlob[i][j].min[k]=0.0;
+		//			}
+		//		}
+	}
+}
+
+void FAULTDETECTOR_SW_freeRegions() {
+	for (int i=0; i<FAULTDETECTOR_MAX_CHECKS; i++) {
+		free(regionsGlob[i]);
+	}
+}
+#endif
+
 void FAULTDETECTOR_SW_initRegions(FAULTDETECTOR_region_t trainedRegions[FAULTDETECTOR_MAX_CHECKS][FAULTDETECTOR_MAX_REGIONS], u8 n_regions_in[FAULTDETECTOR_MAX_CHECKS]) {
 	memcpy(&regionsGlob, trainedRegions, sizeof(regionsGlob));
 	memcpy(&n_regionsGlob, n_regions_in, sizeof(n_regionsGlob));
