@@ -13,12 +13,12 @@ def main():
 
     fl=open('dse.json', 'wb')
 
-    #expRegion=7
-    expRegion=2
+    expRegion=7
+    #expRegion=2
     expRegionMultiplier=1
 
-    #expTrain=10
-    expTrain=2
+    expTrain=10
+    #expTrain=2
     expTrainMultiplier=100
 
     executions=50000
@@ -32,11 +32,11 @@ def main():
     first=True
     for t in range(1, expTrain+1, 1):
         for r in range(1, expRegion+1, 1):
-            reg=math.exp(r)*expRegionMultiplier
-            train=math.exp(t)*expTrainMultiplier
+            reg=pow(2, r)*expRegionMultiplier
+            train=pow(2,t)*expTrainMultiplier
 
             procArr.put(subprocess.Popen(["%userprofile%/eclipse-workspace/faultdetector_benchmark/Debug/faultdetector_benchmark.exe", "-r", str(int(reg)), "-t", str(int(train)), "-e", str(int(executions))], shell=True, stdout=subprocess.PIPE))
-            
+                
             if (procArr.full()):
                 if (first):
                     first=False

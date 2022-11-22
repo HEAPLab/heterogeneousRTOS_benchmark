@@ -512,16 +512,16 @@ int main(int argc, char * const argv[])
 		//			FAULTDET_hotUpdateRegions(trainedRegions, n_regions);
 	}
 	printf("], ");
-	printf("\"total_golden\": %d, ", FAULTDET_testing_getTotal_golden());
-	printf("\"ok_golden\": %d, ", FAULTDET_testing_getOk_golden());
-	printf("\"fp_golden\": %d, ", FAULTDET_testing_getFalsePositives_golden());
+	printf("\"total_pos\": %d, ", FAULTDET_testing_getTotal_golden());
+	printf("\"true_pos\": %d, ", FAULTDET_testing_getOk_golden());
+	printf("\"false_pos\": %d, ", FAULTDET_testing_getFalsePositives_golden());
 
-	printf("\"total\":%d, ", FAULTDET_testing_getTotal());
-	printf("\"ok\": %d, ", FAULTDET_testing_getOk());
-	printf("\"fp\":%d, ", FAULTDET_testing_getFalseNegatives());
+	printf("\"total_bitflips\":%d, ", FAULTDET_testing_getTotal());
+	printf("\"true_neg\": %d, ", FAULTDET_testing_getOk());
+	printf("\"false_neg\":%d, ", FAULTDET_testing_getFalseNegatives());
 //	printf("%d|", FAULTDET_testing_getOk_wtolerance());
 //	printf("%d|", FAULTDET_testing_getFalseNegatives_wtolerance());
-	printf("\"no_effects\": %d", FAULTDET_testing_getNoEffects());
+	printf("\"no_effect_bitflips\": %d", FAULTDET_testing_getNoEffects());
 	printf("}");
 //	printf("\ntotal for fp: %d\n", FAULTDET_testing_getTotal_golden());
 //	printf("ok for fp: %d\n", FAULTDET_testing_getOk_golden());
