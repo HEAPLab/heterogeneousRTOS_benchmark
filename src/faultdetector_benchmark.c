@@ -350,30 +350,30 @@ void latnav(int roundId, int executionId) {
 		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
-		//				if (executionId<-1) {
-		//					FAULTDET_trainPoint(
-		//							1,
-		//							3,  //checkId
-		//							5,
-		//							/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons, &actual_ailerons);
-		//				} else {
-		//					FAULTDET_testPoint(
-		//		#ifndef FAULTDETECTOR_EXECINSW
-		//							&inst,
-		//		#endif
-		//							1, //uniId
-		//							3, //checkId
-		//							0, //BLOCKING OR NON BLOCKING, non blocking
-		//		#ifdef testingCampaign
-		//							injectingErrors,
-		//							4,
-		//							4,
-		//							roundId,
-		//							executionId,
-		//		#endif
-		//							5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//							/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons, &actual_ailerons);
-		//				}
+		if (executionId<-1) {
+			FAULTDET_trainPoint(
+					1,
+					6,  //checkId
+					5,
+					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons, &actual_ailerons);
+		} else {
+			FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+					&inst,
+#endif
+					1, //uniId
+					6, //checkId
+					0, //BLOCKING OR NON BLOCKING, non blocking
+#ifdef testingCampaign
+					injectingErrors,
+					4,
+					4,
+					roundId,
+					executionId,
+#endif
+					5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons, &actual_ailerons);
+		}
 
 		/* Just a random plane model*/
 		FAULTDET_testing_injectFault32(curr_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)-1, injectingErrors);
@@ -474,7 +474,7 @@ int main(int argc, char * const argv[])
 #endif
 
 
-//	printf("start\n");
+	//	printf("start\n");
 
 	random_set_seed(1);
 
@@ -519,19 +519,19 @@ int main(int argc, char * const argv[])
 	printf("\"total_bitflips\":%d, ", FAULTDET_testing_getTotal());
 	printf("\"true_neg\": %d, ", FAULTDET_testing_getOk());
 	printf("\"false_neg\":%d, ", FAULTDET_testing_getFalseNegatives());
-//	printf("%d|", FAULTDET_testing_getOk_wtolerance());
-//	printf("%d|", FAULTDET_testing_getFalseNegatives_wtolerance());
+	//	printf("%d|", FAULTDET_testing_getOk_wtolerance());
+	//	printf("%d|", FAULTDET_testing_getFalseNegatives_wtolerance());
 	printf("\"no_effect_bitflips\": %d", FAULTDET_testing_getNoEffects());
 	printf("}");
-//	printf("\ntotal for fp: %d\n", FAULTDET_testing_getTotal_golden());
-//	printf("ok for fp: %d\n", FAULTDET_testing_getOk_golden());
-//	printf("fp: %d\n", FAULTDET_testing_getFalsePositives_golden());
-//
-//	printf("total for fn: %d\n", FAULTDET_testing_getTotal());
-//	printf("ok for fn: %d\n", FAULTDET_testing_getOk());
-//	printf("fn: %d\n", FAULTDET_testing_getFalseNegatives());
-//	printf("ok for fn with tolerance: %d\n", FAULTDET_testing_getOk_wtolerance());
-//	printf("fn with tolerance: %d\n", FAULTDET_testing_getFalseNegatives_wtolerance());
-//	printf("no effects: %d\n", FAULTDET_testing_getNoEffects());
+	//	printf("\ntotal for fp: %d\n", FAULTDET_testing_getTotal_golden());
+	//	printf("ok for fp: %d\n", FAULTDET_testing_getOk_golden());
+	//	printf("fp: %d\n", FAULTDET_testing_getFalsePositives_golden());
+	//
+	//	printf("total for fn: %d\n", FAULTDET_testing_getTotal());
+	//	printf("ok for fn: %d\n", FAULTDET_testing_getOk());
+	//	printf("fn: %d\n", FAULTDET_testing_getFalseNegatives());
+	//	printf("ok for fn with tolerance: %d\n", FAULTDET_testing_getOk_wtolerance());
+	//	printf("fn with tolerance: %d\n", FAULTDET_testing_getFalseNegatives_wtolerance());
+	//	printf("no effects: %d\n", FAULTDET_testing_getNoEffects());
 	FAULTDETECTOR_SW_freeRegions();
 }

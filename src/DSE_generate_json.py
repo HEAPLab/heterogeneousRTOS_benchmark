@@ -3,15 +3,24 @@ import numpy
 import os
 import math
 import queue
+import argparse
 
 def main():
+
+    parser = argparse.ArgumentParser(
+                    prog = 'ProgramName',
+                    description = 'What the program does',
+                    epilog = 'Text at the bottom of help')
+    parser.add_argument('filename')           # positional argument
+    args=parser.parse_args()
+
     try:
-        os.remove('dse.json')
+        os.remove(args.filename)
     except Exception:
         pass
 
 
-    fl=open('dse.json', 'wb')
+    fl=open(args.filename, 'wb')
 
     expRegion=7
     #expRegion=2
