@@ -19,7 +19,7 @@ char hasRegion(const FAULTDETECTOR_region_t regions[FAULTDETECTOR_MAX_REGIONS], 
 		//			break;
 		for(int j=0; j < FAULTDETECTOR_MAX_AOV_DIM; j++){
 
-			if((regions[i].min[j] <= d[j] || fabs(regions[i].min[j] - d[j]) < FAULTDETECTOR_THRESH ) && ( regions[i].max[j] >= d[j] || fabs(regions[i].max[j] - d[j]) < FAULTDETECTOR_THRESH)) {
+			if((regions[i].min[j] <= d[j] /*|| fabs(regions[i].min[j] - d[j]) < FAULTDETECTOR_THRESH */) && ( regions[i].max[j] >= d[j] /*|| fabs(regions[i].max[j] - d[j]) < FAULTDETECTOR_THRESH */)) {
 				if (j==FAULTDETECTOR_MAX_AOV_DIM-1)
 					return 0xFF;
 			} else break;

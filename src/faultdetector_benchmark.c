@@ -354,8 +354,8 @@ void latnav(int roundId, int executionId) {
 			FAULTDET_trainPoint(
 					1,
 					6,  //checkId
-					5,
-					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons, &actual_ailerons);
+					4,
+					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
 		} else {
 			FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
@@ -366,13 +366,13 @@ void latnav(int roundId, int executionId) {
 					0, //BLOCKING OR NON BLOCKING, non blocking
 #ifdef testingCampaign
 					injectingErrors,
-					4,
-					4,
+					3,
+					3,
 					roundId,
 					executionId,
 #endif
-					5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons, &actual_ailerons);
+					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
 		}
 
 		/* Just a random plane model*/
