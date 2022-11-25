@@ -11,6 +11,8 @@ def main():
                     prog = 'ProgramName',
                     description = 'What the program does',
                     epilog = 'Text at the bottom of help')
+    
+    parser.add_argument('binary')           # positional argument
     parser.add_argument('filename')           # positional argument
     args=parser.parse_args()
 
@@ -44,7 +46,7 @@ def main():
             reg=pow(2, r)*expRegionMultiplier
             train=pow(2,t)*expTrainMultiplier
 
-            procArr.put(subprocess.Popen(["%userprofile%/eclipse-workspace/faultdetector_benchmark/Debug/faultdetector_benchmark.exe", "-r", str(int(reg)), "-t", str(int(train)), "-e", str(int(executions))], shell=True, stdout=subprocess.PIPE))
+            procArr.put(subprocess.Popen([args.binary, "-r", str(int(reg)), "-t", str(int(train)), "-e", str(int(executions))], shell=True, stdout=subprocess.PIPE))
                 
             if (procArr.full()):
                 if (first):
