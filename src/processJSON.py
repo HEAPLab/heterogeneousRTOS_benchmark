@@ -1,5 +1,6 @@
 import ijson
 import argparse
+from math import isnan
 
 
 import matplotlib.ticker as ticker
@@ -62,8 +63,11 @@ def main():
 
                 for er in relErrNum:
                     for thri in range(1, len(fntresholds)):
-                        if (er>fntresholds[thri]):
-                            fn_withthresh[thri]=fn_withthresh[thri]+1
+                        if (isnan(er)):
+                            print("ISNAN")
+                        else:
+                            if (er>fntresholds[thri]):
+                                fn_withthresh[thri]=fn_withthresh[thri]+1
 
                 """
                 print(f"TOTAL {total_neg_tresh} | ")
