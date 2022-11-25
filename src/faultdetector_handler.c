@@ -131,25 +131,26 @@ void FAULTDET_testing_commitTmpStatsAndReset(u8 injectingFault) {
 		if (FAULTDET_testing_temp_aovchanged) {
 			if (FAULTDET_testing_temp_faultdetected) {
 				FAULTDET_testing_ok++;
-				FAULTDET_testing_ok_wtolerance++;
+				//FAULTDET_testing_ok_wtolerance++;
 
 			} else {
 				if (FAULTDET_testing_temp_lastoutputchanged) {
 					FAULTDET_testing_falseNegatives++;
-					if (FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]>0.15f)
-						FAULTDET_testing_falseNegatives_wtolerance++;
-					else
-						FAULTDET_testing_ok_wtolerance++;
-//									for (int i=0; i<FAULTDET_testing_relativeErrors_size; i++) {
-//										printf("%f;", FAULTDET_testing_relativeErrors[i]);
-//									}
+					//					if (FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]>0.15f)
+					//						FAULTDET_testing_falseNegatives_wtolerance++;
+					//					else
+					//						FAULTDET_testing_ok_wtolerance++;
+
+					//									for (int i=0; i<FAULTDET_testing_relativeErrors_size; i++) {
+					//										printf("%f;", FAULTDET_testing_relativeErrors[i]);
+					//									}
 					if (FAULTDET_testing_falseNegatives==1)
 						printf("%f", FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]);
 					else
 						printf(",%f", FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]);
 				} else {
 					FAULTDET_testing_ok++;
-					FAULTDET_testing_ok_wtolerance++;
+					//FAULTDET_testing_ok_wtolerance++;
 
 				}
 			}
@@ -320,20 +321,20 @@ void FAULTDET_testPoint(
 		return; //error
 
 	FAULTDETECTOR_controlStr contr;
-	#ifndef testingCampaign
+#ifndef testingCampaign
 	TCB_t* tcbPtr=*pxCurrentTCB_ptr;
-	#endif
+#endif
 
 
 	contr.uniId=uniId;
 	contr.checkId=checkId;
-	#ifndef testingCampaign
+#ifndef testingCampaign
 	contr.taskId=tcbPtr->uxTaskNumber-1;
 	contr.executionId=tcbPtr->executionId;
-	#else
+#else
 	contr.taskId=0;
 	contr.executionId=1;
-	#endif
+#endif
 
 	for (int i=0; i<argCount; i++) {
 		contr.AOV[i]=*va_arg(ap, float*);
@@ -342,7 +343,7 @@ void FAULTDET_testPoint(
 		contr.AOV[i]=0.0;
 	}
 
-	#ifndef testingCampaign
+#ifndef testingCampaign
 	u16 lastErrorUniId=tcbPtr->lastError.uniId;
 	u8 lastErrorCheckId=tcbPtr->lastError.checkId;
 
@@ -368,31 +369,28 @@ void FAULTDET_testPoint(
 		//						}
 #endif //FAULTDETECTOR_EXECINSW
 	} else if (tcbPtr->reExecutions<configMAX_REEXECUTIONS_SET_IN_HW_SCHEDULER) {
-		#endif
+#endif
 #ifdef FAULTDETECTOR_EXECINSW
 		char fault=FAULTDETECTOR_SW_test(&contr);
 		//		printf(" SW FAULT DETECTOR: fault %x", fault);
-			#ifndef testingCampaign
-		
+#ifndef testingCampaign
+
 		if (fault) {
 			tcbPtr->lastError.uniId=contr.uniId;
 			tcbPtr->lastError.checkId=contr.checkId;
 			tcbPtr->lastError.executionId=contr.executionId;
 			memcpy(&(tcbPtr->lastError.AOV), &(contr.AOV), sizeof(contr.AOV));
 		}
-		#endif
+#endif
 #ifdef testingCampaign
 
 		if (injectingErrors==0) {
 			if (FAULTDET_testing_goldenResults_size<GOLDEN_RESULT_SIZE) {
 				if (fault) {
+					FAULTDET_testing_temp_faultdetected=0xFF;
 #ifdef csvOut
 					printf("%d.%d.%d.%d.1.0.0.0;",roundId, testingExecutionId, checkId, uniId);
-#else
-					FAULTDET_testing_temp_faultdetected=0xFF;
-#endif
 				} else {
-#ifdef csvOut
 					printf("%d.%d.%d.%d.0.0.0.0;",roundId, testingExecutionId, checkId, uniId);
 #endif
 				}
@@ -419,19 +417,17 @@ void FAULTDET_testPoint(
 			if (FAULTDET_testing_isAovEqual(golden, &curr, goldenLobound, goldenUpbound)==0) {
 				if (fault) {
 					//				FAULTDETECTOR_resetFault(&FAULTDETECTOR_InstancePtr, contr.taskId);
+					FAULTDET_testing_temp_faultdetected=fault;
 #ifdef csvOut
 					printf("%d.%d.%d.%d.1.",roundId, testingExecutionId, checkId, uniId);
-
-
 				} else {
 					printf("%d.%d.%d.%d.0.",roundId, testingExecutionId, checkId, uniId);
 #endif
 				}
-				FAULTDET_testing_temp_faultdetected=fault;
 			}
-				#ifndef testingCampaign
+#ifndef testingCampaign
 		}
-		#endif
+#endif
 
 #else //!testingCampaign
 		SCHEDULER_restartFaultyJob((void*) SCHEDULER_BASEADDR, tcbPtr->uxTaskNumber, contr.executionId);
@@ -453,14 +449,10 @@ void FAULTDET_testPoint(
 			FAULTDET_testing_blockUntilProcessed(instance);
 			if (FAULTDETECTOR_hasFault(&FAULTDETECTOR_InstancePtr, contr.taskId)) {
 				FAULTDETECTOR_resetFault(&FAULTDETECTOR_InstancePtr, contr.taskId);
-
+				FAULTDET_testing_temp_faultdetected=0xFF;
 #ifdef csvOut
 				printf("%d.%d.%d.%d.1.0.0.0;",roundId, testingExecutionId, checkId, uniId);
-#else
-				FAULTDET_testing_temp_faultdetected=0xFF;
-#endif
 			} else {
-#ifdef csvOut
 				printf("%d.%d.%d.%d.0.0.0.0;",roundId, testingExecutionId, checkId, uniId);
 #endif
 			}
@@ -480,6 +472,7 @@ void FAULTDET_testPoint(
 		if (FAULTDET_testing_isAovEqual(golden, &curr, goldenLobound, goldenUpbound)==0) {
 			char fault=FAULTDETECTOR_hasFault(&FAULTDETECTOR_InstancePtr, contr.taskId);
 			if (fault) {
+				FAULTDET_testing_temp_faultdetected=0xFF;
 				//				FAULTDETECTOR_resetFault(&FAULTDETECTOR_InstancePtr, contr.taskId);
 #ifdef csvOut
 				printf("%d.%d.%d.%d.1.",roundId, testingExecutionId, checkId, uniId);
@@ -489,7 +482,6 @@ void FAULTDET_testPoint(
 				printf("%d.%d.%d.%d.0.",roundId, testingExecutionId, checkId, uniId);
 #endif
 			}
-			FAULTDET_testing_temp_faultdetected=fault;
 		}
 		FAULTDETECTOR_resetFault(&FAULTDETECTOR_InstancePtr, contr.taskId);
 
@@ -515,20 +507,20 @@ void FAULTDET_trainPoint(int uniId, int checkId, int argCount, ...) {
 		return; //error
 
 	FAULTDETECTOR_controlStr contr;
-	
-	#ifndef testingCampaign
+
+#ifndef testingCampaign
 	TCB_t* tcbPtr=*pxCurrentTCB_ptr;
-	#endif
+#endif
 
 	contr.uniId=uniId;
 	contr.checkId=checkId;
-	#ifndef testingCampaign
+#ifndef testingCampaign
 	contr.taskId=tcbPtr->uxTaskNumber-1;
 	contr.executionId=tcbPtr->executionId;
-	#else
+#else
 	contr.taskId=0;
 	contr.executionId=1;
-	#endif
+#endif
 
 	for (int i=0; i<argCount; i++) {
 		contr.AOV[i]=*va_arg(ap, float*);
