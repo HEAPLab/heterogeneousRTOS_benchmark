@@ -350,7 +350,7 @@ void latnav_train(int roundId, int executionId) {
 	FAULTDET_initFaultDetection(&inst);
 
 
-	inst.lastTest.checkId = first ? 0:6;
+	inst.lastTest.checkId = first ? 0:3;
 	inst.lastTest.executionId=0;
 	inst.lastTest.uniId= first ? 0:1;
 	inst.testedOnce=0xFF;
@@ -578,7 +578,7 @@ void latnav_test(int roundId, int executionId) {
 	FAULTDET_initFaultDetection(&inst);
 
 
-	inst.lastTest.checkId = first ? 0:6;
+	inst.lastTest.checkId = first ? 0:3;
 	inst.lastTest.executionId=0;
 	inst.lastTest.uniId= first ? 0:1;
 	inst.testedOnce=0xFF;
