@@ -1344,14 +1344,14 @@ static void prvTaskFour( void *pvParameters )
 		r2=random_get();
 		r3=random_get();
 		r4=random_get();
-		latnav(0, -5);
+		latnav_train(0, -5);
 	}
 	for (int i=0; i<50000; i++) {
 		r1=random_get();
 		r2=random_get();
 		r3=random_get();
 		r4=random_get();
-		latnav(0, -1);
+		latnav_test(0, -1);
 		//		injectingErrors=0x0;
 		//		FAULTDET_testing_resetGoldens();
 	}
