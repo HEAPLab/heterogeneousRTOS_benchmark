@@ -15,7 +15,7 @@
 //#include "xil_printf.h"
 
 //#define testingCampaign
-//#define FAULTDETECTOR_EXECINSW
+#define FAULTDETECTOR_EXECINSW
 //#define trainMode
 #define onOutputOnly
 
@@ -129,8 +129,8 @@ int main( void )
 			NULL,
 			tskIDLE_PRIORITY,
 			NULL,
-			999999997, //deadline
-			999999997, //period
+			1000, //deadline
+			1000, //period
 			999999997); //wcet
 
 	for (int i=0; i<FAULTDETECTOR_MAX_CHECKS; i++) {
@@ -1294,6 +1294,8 @@ static void prvTaskFour( void *pvParameters )
 {
 	xPortSchedulerDisableIntr(); //if uncommented, task will execute continuously
 	printf("start\n");
+
+	for (int i=0; i<100000; i++)
 
 	random_set_seed(1);
 	//	float a;
