@@ -15,7 +15,7 @@
 //#include "xil_printf.h"
 
 //#define testingCampaign
-#define FAULTDETECTOR_EXECINSW
+//#define FAULTDETECTOR_EXECINSW
 //#define trainMode
 #define onOutputOnly
 
@@ -341,21 +341,19 @@ volatile unsigned int clk_count_bench_total_times=0;
 volatile unsigned long long int clk_count_train_total=0;
 volatile unsigned int clk_count_train_total_times=0;
 
-char first=0xFF;
-
 void latnav_train(int roundId, int executionId) {
 
-#ifndef FAULTDETECTOR_EXECINSW
-	FAULTDET_ExecutionDescriptor inst;
-	FAULTDET_initFaultDetection(&inst);
-
-
-	inst.lastTest.checkId = first ? 0:3;
-	inst.lastTest.executionId=0;
-	inst.lastTest.uniId= first ? 0:1;
-	inst.testedOnce=0xFF;
-	first=0;
-#endif
+//#ifndef FAULTDETECTOR_EXECINSW
+//	FAULTDET_ExecutionDescriptor inst;
+//	FAULTDET_initFaultDetection(&inst);
+//
+//
+//	inst.lastTest.checkId = first ? 0:3;
+//	inst.lastTest.executionId=0;
+//	inst.lastTest.uniId= first ? 0:1;
+//	inst.testedOnce=0xFF;
+//	first=0;
+//#endif
 
 	perf_reset_and_start_clock();
 
@@ -553,8 +551,8 @@ void latnav_train(int roundId, int executionId) {
 
 	}
 	perf_stop_clock();
-//	clk_count_train_total+=get_clock_L();
-//	clk_count_train_total_times++;
+	//	clk_count_train_total+=get_clock_L();
+	//	clk_count_train_total_times++;
 	if (get_clock_U()!=0)
 		printf("err up not 0");
 
@@ -571,18 +569,15 @@ void latnav_train(int roundId, int executionId) {
 #endif
 }
 
+#ifndef FAULTDETECTOR_EXECINSW
+
+FAULTDET_ExecutionDescriptor inst;
+#endif
+
 void latnav_test(int roundId, int executionId) {
 
 #ifndef FAULTDETECTOR_EXECINSW
-	FAULTDET_ExecutionDescriptor inst;
-	FAULTDET_initFaultDetection(&inst);
-
-
-	inst.lastTest.checkId = first ? 0:3;
-	inst.lastTest.executionId=0;
-	inst.lastTest.uniId= first ? 0:1;
-	inst.testedOnce=0xFF;
-	first=0;
+//	FAULTDET_initFaultDetection(&inst);
 #endif
 
 
@@ -612,7 +607,9 @@ void latnav_test(int roundId, int executionId) {
 	pid_roll.integral_sum     = pid_roll.prev_error     = pid_roll.backpropagation     = 0;
 	pid_heading.integral_sum  = pid_heading.prev_error  = pid_heading.backpropagation  = 0;
 
-
+	XFaultdetector FAULTDETECTOR_InstancePtr=FAULTDET_getInstancePtr();
+//	FAULTDETECTOR_controlStr* contr=FAULTDET_getcontr();
+	FAULTDETECTOR_controlStr contr;
 	curr_heading = r1;
 	curr_roll = r2;
 	curr_roll_rate = r3;
@@ -636,27 +633,26 @@ void latnav_test(int roundId, int executionId) {
 		FAULTDET_blockIfFaultDetectedInTask(&inst);
 #endif
 
-
-
-		FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
-				&inst,
+		inst.testedOnce=0xFF;
+		inst.lastTest.checkId=0;
+		inst.lastTest.executionId=0;
+		inst.lastTest.uniId=1;
 #endif
-				1, //uniId
-				0, //checkId
-				0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-				injectingErrors,
-				3,
-				3,
-				roundId,
-				executionId,
-#endif
-				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-				/*&(pid_heading.b),*/ &(pid_heading.backpropagation), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err, &desired_roll, &actual_roll);//, &actual_roll);
 
-
+//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+		contr.uniId=1;
+		contr.checkId=0;
+		contr.taskId=0;
+		contr.executionId=0;
+		contr.command=2;
+		contr.AOV[0]=pid_heading.backpropagation;
+		contr.AOV[1]=err;
+		contr.AOV[2]=desired_roll;
+		contr.AOV[3]=actual_roll;
+		contr.AOV[4]=0;
+//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		FAULTDET_Test(&contr);
 
 
 		pid_heading.backpropagation = actual_roll - desired_roll;
@@ -669,23 +665,27 @@ void latnav_test(int roundId, int executionId) {
 
 		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
 
-		FAULTDET_testPoint(
+
 #ifndef FAULTDETECTOR_EXECINSW
-				&inst,
+		inst.testedOnce=0xFF;
+		inst.lastTest.checkId=1;
+		inst.lastTest.executionId=0;
+		inst.lastTest.uniId=1;
 #endif
-				1, //uniId
-				1, //checkId
-				0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-				injectingErrors,
-				3,
-				3,
-				roundId,
-				executionId,
-#endif
-				5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-				/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
+//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+
+		contr.uniId=1;
+		contr.checkId=1;
+		contr.taskId=0;
+		contr.executionId=0;
+		contr.command=2;
+		contr.AOV[0]=pid_roll.backpropagation;
+		contr.AOV[1]=err1;
+		contr.AOV[2]=desired_roll_rate;
+		contr.AOV[3]=actual_roll_rate;
+		contr.AOV[4]=curr_roll;
+//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		FAULTDET_Test(&contr);
 
 
 		pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
@@ -696,45 +696,57 @@ void latnav_test(int roundId, int executionId) {
 		desired_ailerons = run_pid(&pid_roll, err2, executionId-(32*11)-(32*5)-(32*11)-(32*2));
 		actual_ailerons = ailerons_limiter(desired_ailerons, executionId-(32*11)-(32*5)-(32*11)-(32*2)-(32*11));
 
-		FAULTDET_testPoint(
+
 #ifndef FAULTDETECTOR_EXECINSW
-				&inst,
+		inst.testedOnce=0xFF;
+		inst.lastTest.checkId=2;
+		inst.lastTest.executionId=0;
+		inst.lastTest.uniId=1;
 #endif
-				1, //uniId
-				2, //checkId
-				0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-				injectingErrors,
-				3,
-				3,
-				roundId,
-				executionId,
-#endif
-				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-				/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
+
+//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+
+		contr.uniId=1;
+		contr.checkId=2;
+		contr.taskId=0;
+		contr.executionId=0;
+		contr.command=2;
+		contr.AOV[0]=pid_roll.backpropagation;
+		contr.AOV[1]=err2;
+		contr.AOV[2]=desired_ailerons;
+		contr.AOV[3]=actual_ailerons;
+		contr.AOV[4]=0;
+//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		FAULTDET_Test(&contr);
+
 
 		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
-
-		FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
-				&inst,
+		inst.testedOnce=0xFF;
+		inst.lastTest.checkId=3;
+		inst.lastTest.executionId=0;
+		inst.lastTest.uniId=1;
 #endif
-				1, //uniId
-				3, //checkId
-				0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-				injectingErrors,
-				3,
-				3,
-				roundId,
-				executionId,
-#endif
-				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
 
+//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+
+		contr.uniId=1;
+		contr.checkId=3;
+		contr.taskId=0;
+		contr.executionId=0;
+		contr.command=2;
+		contr.AOV[0]=curr_heading;
+		contr.AOV[1]=curr_roll;
+		contr.AOV[2]=curr_roll_rate;
+		contr.AOV[3]=actual_ailerons;
+		contr.AOV[4]=0;
+
+		FAULTDET_Test(&contr);
+
+
+//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 
 
 		/* Just a random plane model*/
@@ -1214,9 +1226,13 @@ void imgScaling(int executionId) {
 static void prvTaskFour( void *pvParameters )
 {
 	xPortSchedulerDisableIntr(); //if uncommented, task will execute continuously
-	printf("start\n");
 
-	for (int i=0; i<100000; i++)
+	for (int i=0; i<100000; i++) {}
+
+	inst.lastTest.checkId = 0;
+	inst.lastTest.executionId=0;
+	inst.lastTest.uniId= 0;
+	inst.testedOnce=0x0;
 
 	random_set_seed(1);
 	//	float a;
@@ -1278,9 +1294,11 @@ static void prvTaskFour( void *pvParameters )
 		//		injectingErrors=0x0;
 		//		FAULTDET_testing_resetGoldens();
 	}
-//	unsigned int benchtime=clk_count_bench_total/clk_count_bench_total_times;
-//	unsigned int benchtime_train=clk_count_train_total/clk_count_train_total_times;
-//	printf("bench time %u train %u ", benchtime, benchtime_train);
+
+	for (;;) {}
+	//	unsigned int benchtime=clk_count_bench_total/clk_count_bench_total_times;
+	//	unsigned int benchtime_train=clk_count_train_total/clk_count_train_total_times;
+	//	printf("bench time %u train %u ", benchtime, benchtime_train);
 	//	printf("\"total_pos\": %d, ", FAULTDET_testing_getTotal_golden());
 	//	printf("\"true_pos\": %d, ", FAULTDET_testing_getOk_golden());
 	//	printf("\"false_pos\": %d, ", FAULTDET_testing_getFalsePositives_golden());
