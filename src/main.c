@@ -553,8 +553,8 @@ void latnav_train(int roundId, int executionId) {
 
 	}
 	perf_stop_clock();
-	clk_count_train_total+=get_clock_L();
-	clk_count_train_total_times++;
+//	clk_count_train_total+=get_clock_L();
+//	clk_count_train_total_times++;
 	if (get_clock_U()!=0)
 		printf("err up not 0");
 
@@ -585,7 +585,6 @@ void latnav_test(int roundId, int executionId) {
 	first=0;
 #endif
 
-	perf_reset_and_start_clock();
 
 
 	pid_controller_t pid_roll_rate,pid_roll,pid_heading;
@@ -618,6 +617,7 @@ void latnav_test(int roundId, int executionId) {
 	curr_roll = r2;
 	curr_roll_rate = r3;
 
+	perf_reset_and_start_clock();
 
 
 
@@ -659,33 +659,6 @@ void latnav_test(int roundId, int executionId) {
 
 
 
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					3,  //checkId
-		//					2,
-		//					&desired_roll, &actual_roll);
-		//		} else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					3, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					1,
-		//					1,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					&desired_roll, &actual_roll);
-		//		}
-
-
-
 		pid_heading.backpropagation = actual_roll - desired_roll;
 
 		float pid_roll_backpropagation_orig=pid_roll.backpropagation;
@@ -715,31 +688,6 @@ void latnav_test(int roundId, int executionId) {
 				/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
 
 
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					4,  //checkId
-		//					3,
-		//					&actual_roll_rate, &curr_roll, &desired_roll_rate);
-		//		} else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					4, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					0,
-		//					0,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					&actual_roll_rate, &curr_roll, &desired_roll_rate);
-		//		}
-
 		pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
 		pid_roll_backpropagation_orig=pid_roll.backpropagation;
 
@@ -765,32 +713,6 @@ void latnav_test(int roundId, int executionId) {
 				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
 				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
 				/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
-
-
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					5,  //checkId
-		//					2,
-		//					&desired_ailerons, &actual_ailerons);
-		//		} else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					5, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					1,
-		//					1,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					&desired_ailerons, &actual_ailerons);
-		//		}
 
 		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
@@ -831,8 +753,7 @@ void latnav_test(int roundId, int executionId) {
 
 	}
 	perf_stop_clock();
-	clk_count_bench_total+=get_clock_L();
-	clk_count_bench_total_times++;
+	printf("%u\n", get_clock_L());
 	if (get_clock_U()!=0)
 		printf("err up not 0");
 
@@ -1357,9 +1278,9 @@ static void prvTaskFour( void *pvParameters )
 		//		injectingErrors=0x0;
 		//		FAULTDET_testing_resetGoldens();
 	}
-	unsigned int benchtime=clk_count_bench_total/clk_count_bench_total_times;
-	unsigned int benchtime_train=clk_count_train_total/clk_count_train_total_times;
-	printf("bench time %u train %u ", benchtime, benchtime_train);
+//	unsigned int benchtime=clk_count_bench_total/clk_count_bench_total_times;
+//	unsigned int benchtime_train=clk_count_train_total/clk_count_train_total_times;
+//	printf("bench time %u train %u ", benchtime, benchtime_train);
 	//	printf("\"total_pos\": %d, ", FAULTDET_testing_getTotal_golden());
 	//	printf("\"true_pos\": %d, ", FAULTDET_testing_getOk_golden());
 	//	printf("\"false_pos\": %d, ", FAULTDET_testing_getFalsePositives_golden());
