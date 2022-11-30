@@ -392,6 +392,37 @@ void latnav(int roundId, int executionId) {
 					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons);
 		}
 
+<<<<<<< HEAD
+=======
+		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
+
+
+		if (executionId<-1) {
+			FAULTDET_trainPoint(
+					1,
+					6,  //checkId
+					4,
+					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
+		}  else {
+			FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+					&inst,
+#endif
+					1, //uniId
+					6, //checkId
+					0, //BLOCKING OR NON BLOCKING, non blocking
+#ifdef testingCampaign
+					injectingErrors,
+					3,
+					3,
+					roundId,
+					executionId,
+#endif
+					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
+		}
+
+>>>>>>> a3968c6341e991b5ae107afb5a41f83d62467dd7
 		/* Just a random plane model*/
 		//		FAULTDET_testing_injectFault32(curr_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)-1, injectingErrors);
 		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)-1,  injectingErrors);
