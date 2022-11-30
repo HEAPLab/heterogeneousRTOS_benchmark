@@ -177,13 +177,18 @@ void latnav(int roundId, int executionId) {
 		desired_roll = run_pid(&pid_heading, err, executionId);
 		actual_roll = roll_limiter(desired_roll, 400, executionId-(32*11));
 
+#ifndef FAULTDETECTOR_EXECINSW
+		FAULTDET_blockIfFaultDetectedInTask(&inst);
+#endif
+
+
 		if (executionId<-1) {
 			FAULTDET_trainPoint(
 					1,
 					0,  //checkId
-					3,
-//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-					/*&(pid_heading.b),*/ &(pid_heading.backpropagation), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err, &desired_roll);//, &actual_roll);
+					4,
+					//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+					/*&(pid_heading.b),*/ &(pid_heading.backpropagation), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err, &desired_roll, &actual_roll);//, &actual_roll);
 
 		} else {
 			FAULTDET_testPoint(
@@ -195,40 +200,42 @@ void latnav(int roundId, int executionId) {
 					0, //BLOCKING OR NON BLOCKING, non blocking
 #ifdef testingCampaign
 					injectingErrors,
-					2,
-					2,
+					3,
+					3,
 					roundId,
 					executionId,
 #endif
-					3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-					/*&(pid_heading.b),*/ &(pid_heading.backpropagation), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err, &desired_roll);//, &actual_roll);
+					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+					/*&(pid_heading.b),*/ &(pid_heading.backpropagation), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err, &desired_roll, &actual_roll);//, &actual_roll);
 		}
 
-		if (executionId<-1) {
-			FAULTDET_trainPoint(
-					1,
-					3,  //checkId
-					2,
-					&desired_roll, &actual_roll);
-		} else {
-			FAULTDET_testPoint(
-#ifndef FAULTDETECTOR_EXECINSW
-					&inst,
-#endif
-					1, //uniId
-					3, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-					injectingErrors,
-					1,
-					1,
-					roundId,
-					executionId,
-#endif
-					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					&desired_roll, &actual_roll);
-		}
+
+
+		//		if (executionId<-1) {
+		//			FAULTDET_trainPoint(
+		//					1,
+		//					3,  //checkId
+		//					2,
+		//					&desired_roll, &actual_roll);
+		//		} else {
+		//			FAULTDET_testPoint(
+		//#ifndef FAULTDETECTOR_EXECINSW
+		//					&inst,
+		//#endif
+		//					1, //uniId
+		//					3, //checkId
+		//					0, //BLOCKING OR NON BLOCKING, non blocking
+		//#ifdef testingCampaign
+		//					injectingErrors,
+		//					1,
+		//					1,
+		//					roundId,
+		//					executionId,
+		//#endif
+		//					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+		//					&desired_roll, &actual_roll);
+		//		}
 
 
 
@@ -239,15 +246,16 @@ void latnav(int roundId, int executionId) {
 		float err1=curr_roll - actual_roll;
 		float err1_orig=curr_roll - actual_roll;
 		desired_roll_rate = run_pid(&pid_roll, err1, executionId-(32*11)-(32*5));
+
 		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
 
 		if (executionId<-1) {
 			FAULTDET_trainPoint(
 					1,
 					1,  //ceckId
-					3,
-//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-			/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate);//, &actual_roll_rate);
+					5,
+					//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
+					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
 
 		} else {
 			FAULTDET_testPoint(
@@ -259,40 +267,41 @@ void latnav(int roundId, int executionId) {
 					0, //BLOCKING OR NON BLOCKING, non blocking
 #ifdef testingCampaign
 					injectingErrors,
-					2,
-					2,
+					3,
+					3,
 					roundId,
 					executionId,
 #endif
-					3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate);//, &actual_roll_rate);
+					5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
+					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
 		}
 
-		if (executionId<-1) {
-			FAULTDET_trainPoint(
-					1,
-					4,  //checkId
-					3,
-					&actual_roll_rate, &curr_roll, &desired_roll_rate);
-		} else {
-			FAULTDET_testPoint(
-#ifndef FAULTDETECTOR_EXECINSW
-					&inst,
-#endif
-					1, //uniId
-					4, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-					injectingErrors,
-					0,
-					0,
-					roundId,
-					executionId,
-#endif
-					3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					&actual_roll_rate, &curr_roll, &desired_roll_rate);
-		}
+
+		//		if (executionId<-1) {
+		//			FAULTDET_trainPoint(
+		//					1,
+		//					4,  //checkId
+		//					3,
+		//					&actual_roll_rate, &curr_roll, &desired_roll_rate);
+		//		} else {
+		//			FAULTDET_testPoint(
+		//#ifndef FAULTDETECTOR_EXECINSW
+		//					&inst,
+		//#endif
+		//					1, //uniId
+		//					4, //checkId
+		//					0, //BLOCKING OR NON BLOCKING, non blocking
+		//#ifdef testingCampaign
+		//					injectingErrors,
+		//					0,
+		//					0,
+		//					roundId,
+		//					executionId,
+		//#endif
+		//					3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+		//					&actual_roll_rate, &curr_roll, &desired_roll_rate);
+		//		}
 
 		pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
 		pid_roll_backpropagation_orig=pid_roll.backpropagation;
@@ -306,9 +315,9 @@ void latnav(int roundId, int executionId) {
 			FAULTDET_trainPoint(
 					1,
 					2,  //checkId
-					3,
-//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-			/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons);//, &actual_ailerons);
+					4,
+					//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
+					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
 
 		} else {
 			FAULTDET_testPoint(
@@ -320,83 +329,82 @@ void latnav(int roundId, int executionId) {
 					0, //BLOCKING OR NON BLOCKING, non blocking
 #ifdef testingCampaign
 					injectingErrors,
-					2,
-					2,
+					3,
+					3,
 					roundId,
 					executionId,
 #endif
-					3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons);//, &actual_ailerons);
+					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
+					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
 		}
+
+		//		if (executionId<-1) {
+		//			FAULTDET_trainPoint(
+		//					1,
+		//					5,  //checkId
+		//					2,
+		//					&desired_ailerons, &actual_ailerons);
+		//		} else {
+		//			FAULTDET_testPoint(
+		//#ifndef FAULTDETECTOR_EXECINSW
+		//					&inst,
+		//#endif
+		//					1, //uniId
+		//					5, //checkId
+		//					0, //BLOCKING OR NON BLOCKING, non blocking
+		//#ifdef testingCampaign
+		//					injectingErrors,
+		//					1,
+		//					1,
+		//					roundId,
+		//					executionId,
+		//#endif
+		//					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+		//					&desired_ailerons, &actual_ailerons);
+		//		}
+
+		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
 		if (executionId<-1) {
 			FAULTDET_trainPoint(
 					1,
-					5,  //checkId
-					2,
-					&desired_ailerons, &actual_ailerons);
-		} else {
+					3,  //checkId
+					4,
+					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons);
+		}  else {
 			FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
 					&inst,
 #endif
 					1, //uniId
-					5, //checkId
+					3, //checkId
 					0, //BLOCKING OR NON BLOCKING, non blocking
 #ifdef testingCampaign
 					injectingErrors,
-					1,
-					1,
+					3,
+					3,
 					roundId,
 					executionId,
 #endif
-					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					&desired_ailerons, &actual_ailerons);
+					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons);
 		}
 
-		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
-
-
-//		if (executionId<-1) {
-//			FAULTDET_trainPoint(
-//					1,
-//					6,  //checkId
-//					4,
-//					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
-//		}  else {
-//			FAULTDET_testPoint(
-//#ifndef FAULTDETECTOR_EXECINSW
-//					&inst,
-//#endif
-//					1, //uniId
-//					6, //checkId
-//					0, //BLOCKING OR NON BLOCKING, non blocking
-//#ifdef testingCampaign
-//					injectingErrors,
-//					3,
-//					3,
-//					roundId,
-//					executionId,
-//#endif
-//					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-//					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
-//		}
-
 		/* Just a random plane model*/
-//		FAULTDET_testing_injectFault32(curr_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)-1, injectingErrors);
-//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)-1,  injectingErrors);
-//		FAULTDET_testing_injectFault32(desired_ailerons, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)+(32)-1,  injectingErrors);
+		//		FAULTDET_testing_injectFault32(curr_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)-1, injectingErrors);
+		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)-1,  injectingErrors);
+		//		FAULTDET_testing_injectFault32(desired_ailerons, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)+(32)-1,  injectingErrors);
 
-//				curr_heading += curr_roll/10 * TIME_STEP;
-//				curr_roll += curr_roll_rate * TIME_STEP;
-//				curr_roll_rate += desired_ailerons / 5;
+		//				curr_heading += curr_roll/10 * TIME_STEP;
+		//				curr_roll += curr_roll_rate * TIME_STEP;
+		//				curr_roll_rate += desired_ailerons / 5;
 
 
-//		FAULTDET_testing_injectFault32(curr_heading, executionId, 1408, 1408+32-1, injectingErrors);
-//		FAULTDET_testing_injectFault32(curr_roll, executionId, 1408+32, 1408+32+32-1,  injectingErrors);
-//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, 1408+32+32, 1408+32+32+32-1 /*1503*/,  injectingErrors);
+		//		FAULTDET_testing_injectFault32(curr_heading, executionId, 1408, 1408+32-1, injectingErrors);
+		//		FAULTDET_testing_injectFault32(curr_roll, executionId, 1408+32, 1408+32+32-1,  injectingErrors);
+		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, 1408+32+32, 1408+32+32+32-1 /*1503*/,  injectingErrors);
 
 	}
 
@@ -452,12 +460,12 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-//	if (executions==0)
-//		executions=4000;
-//	if (regs==0)
-//		regs=16;
-//	if (trainIter==0)
-//		trainIter=8096;
+	//	if (executions==0)
+	//		executions=4000;
+	//	if (regs==0)
+	//		regs=16;
+	//	if (trainIter==0)
+	//		trainIter=8096;
 
 	if (executions==0)
 		executions=4000;
