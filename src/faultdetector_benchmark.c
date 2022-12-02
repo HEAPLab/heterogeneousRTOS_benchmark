@@ -7,7 +7,8 @@
  Description : Hello World in C, Ansi-style
  ============================================================================
  */
-#define latnavBench
+//#define latnavBench
+#define FFTBench
 #define FAULTDETECTOR_EXECINSW
 #define testingCampaign
 
@@ -22,6 +23,139 @@ u8 injectingErrors=0;
 float r1, r2, r3, r4;
 
 
+#ifdef FFTBench
+
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#define FFT_LENGTH 2
+typedef struct{
+	float re,im;
+} complex;
+
+static complex array_in[FFT_LENGTH];
+static complex array_out[FFT_LENGTH];
+
+
+
+/**
+ * @brief It performs sum between two complex numbers
+ *
+ * @param a first complex number
+ * @param b second complex number
+ * @return complex sum of a and b
+ */
+static complex complex_sum(complex a, complex b){
+	complex res;
+	res.re=a.re + b.re;
+	res.im=a.im + b.im;
+	return res;
+}
+/**
+ * @brief It performs multiplication between two complex numbers
+ *
+ * @param a first complex number
+ * @param b second complex number
+ * @return complex mult of a and b
+ */
+static complex complex_mult(complex a, complex b){
+	complex res;
+	res.re=(a.re * b.re) - (a.im*b.im);
+	res.im=(a.im*b.re) + (a.re*b.im);
+	return res;
+}
+/**
+ * @brief It translates exponential form to Re and Im components
+ *
+ * @param x exponent
+ * @return Re and Im components
+ */
+static complex complex_exp(float x){
+	/* e^(i*x)=cos(x) + i*sin(x)*/
+	complex res;
+	res.re=cos(x);
+	res.im=sin(x);
+	return res;
+}
+
+/**
+ * @brief Actual fft implementation using Cooley–Tukey algorithm (radix-2 DIT case)
+ *
+ * @return Fourier transform for input array
+ */
+static void fft_routine(int executionId){
+	int k;
+
+	for(k=0;k<FFT_LENGTH;k++){
+
+
+		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
+		int n;
+		complex even_sum,odd_sum;
+
+		even_sum.re=0;
+		even_sum.im=0;
+
+		for(n=0;n<FFT_LENGTH;n=n+2){
+			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH));
+
+			complex_sum(even_sum,n_term);
+		}
+
+
+		odd_sum.re=0;
+		odd_sum.im=0;
+		for(n=1;n<FFT_LENGTH;n=n+2){
+			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH));
+
+			complex_sum(odd_sum,n_term);
+		}
+
+		array_out[k] = complex_sum(even_sum,odd_sum);
+	}
+	if (executionId==-991)
+		printf("991");
+
+	if (executionId<-1) {
+		FAULTDET_trainPoint(
+				1,
+				0,  //checkId
+				8,
+				&(array_in[0].re), &(array_in[0].im),  &(array_in[1].re),  &(array_in[1].im), &(array_out[0].re), &(array_out[0].im),  &(array_out[1].re),  &(array_out[1].im));
+	} else {
+		FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+				&inst,
+#endif
+				1, //uniId
+				0, //checkId
+				0, //BLOCKING OR NON BLOCKING, non blocking
+#ifdef testingCampaign
+				injectingErrors,
+				3,
+				7,
+				0,
+				executionId,
+#endif
+				8, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+				&(array_in[0].re), &(array_in[0].im),  &(array_in[1].re),  &(array_in[1].im), &(array_out[0].re), &(array_out[0].im),  &(array_out[1].re),  &(array_out[1].im));
+	}
+#ifdef testingCampaign
+	if (executionId>=-1) {
+		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
+	}
+
+	if (executionId==-1) {
+
+		injectingErrors=0xFF;
+	}
+#endif
+}
+
+#endif
 
 #ifdef latnavBench
 
@@ -392,37 +526,34 @@ void latnav(int roundId, int executionId) {
 					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons);
 		}
 
-<<<<<<< HEAD
-=======
 		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
-		if (executionId<-1) {
-			FAULTDET_trainPoint(
-					1,
-					6,  //checkId
-					4,
-					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
-		}  else {
-			FAULTDET_testPoint(
-#ifndef FAULTDETECTOR_EXECINSW
-					&inst,
-#endif
-					1, //uniId
-					6, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-					injectingErrors,
-					3,
-					3,
-					roundId,
-					executionId,
-#endif
-					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
-		}
+		//		if (executionId<-1) {
+		//			FAULTDET_trainPoint(
+		//					1,
+		//					6,  //checkId
+		//					4,
+		//					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
+		//		}  else {
+		//			FAULTDET_testPoint(
+		//#ifndef FAULTDETECTOR_EXECINSW
+		//					&inst,
+		//#endif
+		//					1, //uniId
+		//					6, //checkId
+		//					0, //BLOCKING OR NON BLOCKING, non blocking
+		//#ifdef testingCampaign
+		//					injectingErrors,
+		//					3,
+		//					3,
+		//					roundId,
+		//					executionId,
+		//#endif
+		//					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+		//					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
+		//		}
 
->>>>>>> a3968c6341e991b5ae107afb5a41f83d62467dd7
 		/* Just a random plane model*/
 		//		FAULTDET_testing_injectFault32(curr_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)-1, injectingErrors);
 		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)-1,  injectingErrors);
@@ -501,7 +632,7 @@ int main(int argc, char * const argv[])
 	if (executions==0)
 		executions=4000;
 	if (regs==0)
-		regs=2;
+		regs=16;
 	if (trainIter==0)
 		trainIter=200;
 
@@ -528,10 +659,41 @@ int main(int argc, char * const argv[])
 	FAULTDETECTOR_SW_allocRegions(regs);
 #endif
 
-
-	//	printf("start\n");
-
 	random_set_seed(1);
+
+#ifdef FFTBench
+	for (int executionId=-10000; executionId<-1; executionId++) {
+		for(int i=0; i<FFT_LENGTH;i++){
+			complex x;
+			x.re=random_get();
+			x.im=random_get();
+
+			array_in[i]=x;
+		}
+		fft_routine(executionId);
+
+	}
+
+	for (int i=0; i<50000; i++) {
+		for(int i=0; i<FFT_LENGTH;i++){
+			complex x;
+			x.re=random_get();
+			x.im=random_get();
+
+			array_in[i]=x;
+		}
+		injectingErrors=0x0;
+		for (int executionId=-1 ;executionId<0/*1503*//*960*/; executionId++) {
+			fft_routine(executionId);
+		}
+		FAULTDET_testing_resetGoldens();
+		injectingErrors=0;
+	}
+
+#endif
+
+
+#ifdef latnavBench
 
 	//	for (int i=0; i<1000; i++) {
 	//		injectingErrors=0x0;
@@ -566,6 +728,7 @@ int main(int argc, char * const argv[])
 		//#endif
 		//			FAULTDET_hotUpdateRegions(trainedRegions, n_regions);
 	}
+#endif
 	printf("], ");
 	printf("\"total_pos\": %d, ", FAULTDET_testing_getTotal_golden());
 	printf("\"true_pos\": %d, ", FAULTDET_testing_getOk_golden());

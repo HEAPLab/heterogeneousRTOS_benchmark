@@ -1,4 +1,4 @@
 .settings/
 Debug/
-src/*.json
+*.json
 *.exe

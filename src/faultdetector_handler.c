@@ -136,22 +136,34 @@ void FAULTDET_testing_commitTmpStatsAndReset(u8 injectingFault) {
 			} else {
 				if (FAULTDET_testing_temp_lastoutputchanged) {
 					FAULTDET_testing_falseNegatives++;
-					//					if (FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]>0.15f)
+
+				    float maxErr=FAULTDET_testing_relativeErrors[0];
+				    for (int i=0; i<FAULTDET_testing_relativeErrors_size; i++) {
+				    	if (FAULTDET_testing_relativeErrors[i]>maxErr)
+				    		maxErr=FAULTDET_testing_relativeErrors[i];
+				    }
+
+					union {
+				        float f;
+				        uint32_t u;
+				    } f2u = { .f = maxErr };
+
+
+
+				    //					if (FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]>0.15f)
 					//						FAULTDET_testing_falseNegatives_wtolerance++;
 					//					else
 					//						FAULTDET_testing_ok_wtolerance++;
-
 					//									for (int i=0; i<FAULTDET_testing_relativeErrors_size; i++) {
 					//										printf("%f;", FAULTDET_testing_relativeErrors[i]);
 					//									}
 					if (FAULTDET_testing_falseNegatives==1)
-						printf("%f", FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]);
+						printf("%u", f2u.u);
 					else
-						printf(",%f", FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]);
+						printf(",%u", f2u.u);
 				} else {
 					FAULTDET_testing_ok++;
 					//FAULTDET_testing_ok_wtolerance++;
-
 				}
 			}
 		} else {

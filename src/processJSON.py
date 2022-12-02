@@ -17,7 +17,7 @@ def log_tick_formatter(val, pos=None):
 
 
 #fntresholds=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-fntresholds=np.linspace(0.0, 1000.0, num=50)
+fntresholds=np.linspace(0.0, 3.0, num=150)
 fn_withthresh=np.zeros(len(fntresholds), dtype=int)
 
 def main():
@@ -69,7 +69,9 @@ def main():
             regions_fn_rate.append(fn*100/total_neg)
 
             if (trainIterations==int(args.train) and regions==int(args.regions)):
-                relErrNum = np.asarray(record["relerr"], dtype=float)
+                relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
+                #relErrNum = np.zeros(len(record["relerr"]), dtype=np.uint32)
+                relErrNum = relErrNum.view(dtype=np.float32)
                 fn_withthresh[0]=fn
                 #print(fn)
                 total_neg_tresh=tn+len(relErrNum)
@@ -117,6 +119,9 @@ def main():
     ax.plot(fntresholds, (relerrarr))
     plt.gcf().subplots_adjust(left=0.2)
     ax.yaxis.set_major_formatter(ticker.PercentFormatter())
+    ax.set_yscale('log')
+    
+    ax.set_yscale('log')
     plt.xlabel("Accepted relative error threshold")
     plt.ylabel("False negatives rate")
     
