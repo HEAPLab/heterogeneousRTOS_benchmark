@@ -28,7 +28,7 @@
 #include "perf_timer.h"
 
 //#define imgscalingBench
-#define latnavBench
+#define FFTBench
 //
 //#ifdef trainMode
 #ifdef imgscalingBench
@@ -176,7 +176,7 @@ int main( void )
 			0,
 			trainedRegions,
 			n_regions);
-
+	//	printf("%u\n", sizeof(FAULTDETECTOR_testpointShortDescriptorStr));
 
 	vTaskStartScheduler();
 
@@ -216,8 +216,228 @@ static void prvTaskThree( void *pvParameters )
 
 
 u8 injectingErrors=0;
-float r1, r2, r3, r4;
+FAULTDETECTOR_controlStr contr;
 
+
+#ifdef FFTBench
+
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#define FFT_LENGTH 2
+typedef struct{
+	float re,im;
+} complex;
+
+static complex array_in[FFT_LENGTH];
+static complex array_out[FFT_LENGTH];
+
+
+
+/**
+ * @brief It performs sum between two complex numbers
+ *
+ * @param a first complex number
+ * @param b second complex number
+ * @return complex sum of a and b
+ */
+
+//192
+static complex complex_sum(complex a, complex b){
+//	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
+//	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
+//	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
+//	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
+
+	complex res;
+	res.re=a.re + b.re;
+	res.im=a.im + b.im;
+
+//	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
+//	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
+
+	return res;
+}
+/**
+ * @brief It performs multiplication between two complex numbers
+ *
+ * @param a first complex number
+ * @param b second complex number
+ * @return complex mult of a and b
+ */
+
+//192
+static complex complex_mult(complex a, complex b){
+//	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
+//	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
+//	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
+//	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
+
+	complex res;
+	res.re=(a.re * b.re) - (a.im*b.im);
+	res.im=(a.im*b.re) + (a.re*b.im);
+
+//	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
+//	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
+
+	return res;
+}
+/**
+ * @brief It translates exponential form to Re and Im components
+ *
+ * @param x exponent
+ * @return Re and Im components
+ */
+
+//96
+static complex complex_exp(float x){
+	/* e^(i*x)=cos(x) + i*sin(x)*/
+//	FAULTDET_testing_injectFault32(x, executionId, 32*0, (32*1)-1, injectingErrors);
+
+	complex res;
+	res.re=cos(x);
+	res.im=sin(x);
+
+//	FAULTDET_testing_injectFault32(res.re, executionId, 32*1, (32*2)-1, injectingErrors);
+//	FAULTDET_testing_injectFault32(res.im, executionId, 32*2, (32*3)-1, injectingErrors);
+
+	return res;
+}
+
+/**
+ * @brief Actual fft implementation using Cooley–Tukey algorithm (radix-2 DIT case)
+ *
+ * @return Fourier transform for input array
+ */
+
+//LOOP1TOTAL=64+LOOP2TOTAL+
+//LOOP2TOTAL=192+
+#define LOOP1TOTAL 1280
+static void fft_routine_test(int executionId){
+	int k;
+
+	perf_reset_and_start_clock();
+	for(k=0;k<FFT_LENGTH;k++){
+
+
+		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
+		int n;
+		complex even_sum,odd_sum;
+
+		even_sum.re=0;
+		even_sum.im=0;
+
+//		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+k*LOOP1TOTAL, (32*1)-1+k*LOOP1TOTAL, injectingErrors);
+//		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+k*LOOP1TOTAL, (32*2)-1+k*LOOP1TOTAL, injectingErrors);
+
+		for(n=0;n<FFT_LENGTH;n=n+2){
+			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH)); //192
+
+			complex_sum(even_sum,n_term); //192
+		}
+
+
+		odd_sum.re=0;
+		odd_sum.im=0;
+
+//		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2)+192*2+k*LOOP1TOTAL, (32*3)-1+192*2+k*LOOP1TOTAL, injectingErrors);
+//		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3)+192*2+k*LOOP1TOTAL, (32*4)-1+192*2+k*LOOP1TOTAL, injectingErrors);
+
+		for(n=1;n<FFT_LENGTH;n=n+2){
+			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH) ); //192
+
+			complex_sum(odd_sum,n_term); //192
+		}
+
+		array_out[k] = complex_sum(even_sum,odd_sum); //192
+	}
+
+
+	contr.uniId=1;
+	contr.checkId=0;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=array_in[0].re;
+	contr.AOV[1]=array_in[0].im;
+	contr.AOV[2]=array_in[1].re;
+	contr.AOV[3]=array_in[1].im;
+	contr.AOV[4]=array_out[0].re;
+	contr.AOV[5]=array_out[0].im;
+	contr.AOV[6]=array_out[1].re;
+	contr.AOV[7]=array_out[1].im;
+	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		FAULTDET_Test(&contr);
+	FAULTDET_testPoint(&contr);
+	perf_stop_clock();
+	printf("%u\n", get_clock_L());
+	if (get_clock_U()!=0)
+		printf("err up not 0");
+}
+
+static void fft_routine_train(int executionId){
+	int k;
+
+	for(k=0;k<FFT_LENGTH;k++){
+
+
+		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
+		int n;
+		complex even_sum,odd_sum;
+
+		even_sum.re=0;
+		even_sum.im=0;
+
+//		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+k*LOOP1TOTAL, (32*1)-1+k*LOOP1TOTAL, injectingErrors);
+//		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+k*LOOP1TOTAL, (32*2)-1+k*LOOP1TOTAL, injectingErrors);
+
+		for(n=0;n<FFT_LENGTH;n=n+2){
+			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH)); //192
+
+			complex_sum(even_sum,n_term); //192
+		}
+
+
+		odd_sum.re=0;
+		odd_sum.im=0;
+
+//		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2)+192*2+k*LOOP1TOTAL, (32*3)-1+192*2+k*LOOP1TOTAL, injectingErrors);
+//		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3)+192*2+k*LOOP1TOTAL, (32*4)-1+192*2+k*LOOP1TOTAL, injectingErrors);
+
+		for(n=1;n<FFT_LENGTH;n=n+2){
+			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH )); //192
+
+			complex_sum(odd_sum,n_term); //192
+		}
+
+		array_out[k] = complex_sum(even_sum,odd_sum); //192
+	}
+
+	FAULTDET_trainPoint(
+			1,
+			0,  //checkId
+			8,
+			&(array_in[0].re), &(array_in[0].im),  &(array_in[1].re),  &(array_in[1].im), &(array_out[0].re), &(array_out[0].im),  &(array_out[1].re),  &(array_out[1].im));
+
+#ifdef testingCampaign
+	if (executionId>=-1) {
+		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
+	}
+
+	if (executionId==-1) {
+
+		injectingErrors=0xFF;
+	}
+#endif
+}
+
+#endif
+
+
+float r1, r2, r3, r4;
 
 
 #ifdef latnavBench
@@ -343,17 +563,17 @@ volatile unsigned int clk_count_train_total_times=0;
 
 void latnav_train(int roundId, int executionId) {
 
-//#ifndef FAULTDETECTOR_EXECINSW
-//	FAULTDET_ExecutionDescriptor inst;
-//	FAULTDET_initFaultDetection(&inst);
-//
-//
-//	inst.lastTest.checkId = first ? 0:3;
-//	inst.lastTest.executionId=0;
-//	inst.lastTest.uniId= first ? 0:1;
-//	inst.testedOnce=0xFF;
-//	first=0;
-//#endif
+	//#ifndef FAULTDETECTOR_EXECINSW
+	//	FAULTDET_ExecutionDescriptor inst;
+	//	FAULTDET_initFaultDetection(&inst);
+	//
+	//
+	//	inst.lastTest.checkId = first ? 0:3;
+	//	inst.lastTest.executionId=0;
+	//	inst.lastTest.uniId= first ? 0:1;
+	//	inst.testedOnce=0xFF;
+	//	first=0;
+	//#endif
 
 	perf_reset_and_start_clock();
 
@@ -569,18 +789,16 @@ void latnav_train(int roundId, int executionId) {
 #endif
 }
 
-#ifndef FAULTDETECTOR_EXECINSW
-
-FAULTDET_ExecutionDescriptor inst;
-#endif
+//#ifndef FAULTDETECTOR_EXECINSW
+//
+//FAULTDET_ExecutionDescriptor inst;
+//#endif
 
 void latnav_test(int roundId, int executionId) {
 
 #ifndef FAULTDETECTOR_EXECINSW
-//	FAULTDET_initFaultDetection(&inst);
+	//	FAULTDET_initFaultDetection(&inst);
 #endif
-
-
 
 	pid_controller_t pid_roll_rate,pid_roll,pid_heading;
 	float curr_heading,curr_roll,curr_roll_rate;
@@ -608,8 +826,8 @@ void latnav_test(int roundId, int executionId) {
 	pid_heading.integral_sum  = pid_heading.prev_error  = pid_heading.backpropagation  = 0;
 
 	XFaultdetector FAULTDETECTOR_InstancePtr=FAULTDET_getInstancePtr();
-//	FAULTDETECTOR_controlStr* contr=FAULTDET_getcontr();
-	FAULTDETECTOR_controlStr contr;
+	//	FAULTDETECTOR_controlStr* contr=&contrtmp;
+	//	FAULTDETECTOR_controlStr contr;
 	curr_heading = r1;
 	curr_roll = r2;
 	curr_roll_rate = r3;
@@ -630,29 +848,33 @@ void latnav_test(int roundId, int executionId) {
 		actual_roll = roll_limiter(desired_roll, 400, executionId-(32*11));
 
 #ifndef FAULTDETECTOR_EXECINSW
-		FAULTDET_blockIfFaultDetectedInTask(&inst);
+		FAULTDET_blockIfFaultDetectedInTask(&contr);
 #endif
 
-#ifndef FAULTDETECTOR_EXECINSW
-		inst.testedOnce=0xFF;
-		inst.lastTest.checkId=0;
-		inst.lastTest.executionId=0;
-		inst.lastTest.uniId=1;
-#endif
+		//#ifndef FAULTDETECTOR_EXECINSW
+		////		inst.testedOnce=0xFF;
+		////		inst.lastTest.checkId=0;
+		////		inst.lastTest.executionId=0;
+		////		inst.lastTest.uniId=1;
+		//		contr.uniId=1;
+		//		contr.executionId=0;
+		//		contr.checkId=0;
+		//#endif
 
-//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+		//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 		contr.uniId=1;
 		contr.checkId=0;
-		contr.taskId=0;
-		contr.executionId=0;
-		contr.command=2;
+		//		contr.taskId=0;
+		//		contr.executionId=0;
+		//		contr.command=2;
 		contr.AOV[0]=pid_heading.backpropagation;
 		contr.AOV[1]=err;
 		contr.AOV[2]=desired_roll;
 		contr.AOV[3]=actual_roll;
 		contr.AOV[4]=0;
-//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-		FAULTDET_Test(&contr);
+		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		//		FAULTDET_Test(&contr);
+		FAULTDET_testPoint(&contr);
 
 
 		pid_heading.backpropagation = actual_roll - desired_roll;
@@ -666,26 +888,27 @@ void latnav_test(int roundId, int executionId) {
 		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
 
 
-#ifndef FAULTDETECTOR_EXECINSW
-		inst.testedOnce=0xFF;
-		inst.lastTest.checkId=1;
-		inst.lastTest.executionId=0;
-		inst.lastTest.uniId=1;
-#endif
-//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+		//#ifndef FAULTDETECTOR_EXECINSW
+		//		inst.testedOnce=0xFF;
+		//		inst.lastTest.checkId=1;
+		//		inst.lastTest.executionId=0;
+		//		inst.lastTest.uniId=1;
+		//#endif
+		//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
 		contr.uniId=1;
 		contr.checkId=1;
-		contr.taskId=0;
-		contr.executionId=0;
-		contr.command=2;
+		//		contr.taskId=0;
+		//		contr.executionId=0;
+		//		contr.command=2;
 		contr.AOV[0]=pid_roll.backpropagation;
 		contr.AOV[1]=err1;
 		contr.AOV[2]=desired_roll_rate;
 		contr.AOV[3]=actual_roll_rate;
 		contr.AOV[4]=curr_roll;
-//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-		FAULTDET_Test(&contr);
+		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		//		FAULTDET_Test(&contr);
+		FAULTDET_testPoint(&contr);
 
 
 		pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
@@ -697,56 +920,59 @@ void latnav_test(int roundId, int executionId) {
 		actual_ailerons = ailerons_limiter(desired_ailerons, executionId-(32*11)-(32*5)-(32*11)-(32*2)-(32*11));
 
 
-#ifndef FAULTDETECTOR_EXECINSW
-		inst.testedOnce=0xFF;
-		inst.lastTest.checkId=2;
-		inst.lastTest.executionId=0;
-		inst.lastTest.uniId=1;
-#endif
+		//#ifndef FAULTDETECTOR_EXECINSW
+		//		inst.testedOnce=0xFF;
+		//		inst.lastTest.checkId=2;
+		//		inst.lastTest.executionId=0;
+		//		inst.lastTest.uniId=1;
+		//#endif
 
-//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+		//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
 		contr.uniId=1;
 		contr.checkId=2;
-		contr.taskId=0;
-		contr.executionId=0;
-		contr.command=2;
+		//		contr.taskId=0;
+		//		contr.executionId=0;
+		//		contr.command=2;
 		contr.AOV[0]=pid_roll.backpropagation;
 		contr.AOV[1]=err2;
 		contr.AOV[2]=desired_ailerons;
 		contr.AOV[3]=actual_ailerons;
 		contr.AOV[4]=0;
-//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-		FAULTDET_Test(&contr);
+		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		//		FAULTDET_Test(&contr);
+		FAULTDET_testPoint(&contr);
 
 
 		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
-#ifndef FAULTDETECTOR_EXECINSW
-		inst.testedOnce=0xFF;
-		inst.lastTest.checkId=3;
-		inst.lastTest.executionId=0;
-		inst.lastTest.uniId=1;
-#endif
+		//#ifndef FAULTDETECTOR_EXECINSW
+		//		inst.testedOnce=0xFF;
+		//		inst.lastTest.checkId=3;
+		//		inst.lastTest.executionId=0;
+		//		inst.lastTest.uniId=1;
+		//#endif
 
-//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+		//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
 		contr.uniId=1;
 		contr.checkId=3;
-		contr.taskId=0;
-		contr.executionId=0;
-		contr.command=2;
+		//		contr.taskId=0;
+		//		contr.executionId=0;
+		//		contr.command=2;
 		contr.AOV[0]=curr_heading;
 		contr.AOV[1]=curr_roll;
 		contr.AOV[2]=curr_roll_rate;
 		contr.AOV[3]=actual_ailerons;
 		contr.AOV[4]=0;
 
-		FAULTDET_Test(&contr);
+		FAULTDET_testPoint(&contr);
+
+		//		FAULTDET_Test(&contr);
 
 
-//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 
 
 		/* Just a random plane model*/
@@ -1229,10 +1455,10 @@ static void prvTaskFour( void *pvParameters )
 
 	for (int i=0; i<100000; i++) {}
 
-	inst.lastTest.checkId = 0;
-	inst.lastTest.executionId=0;
-	inst.lastTest.uniId= 0;
-	inst.testedOnce=0x0;
+	//	inst.lastTest.checkId = 0;
+	//	inst.lastTest.executionId=0;
+	//	inst.lastTest.uniId= 0;
+	//	inst.testedOnce=0x0;
 
 	random_set_seed(1);
 	//	float a;
@@ -1278,6 +1504,36 @@ static void prvTaskFour( void *pvParameters )
 	//#endif
 	//	}
 	//	printf("clk train mean: %u clk test mean: %u", getMeanTrainClock(), getMeanTestClock());
+
+#ifdef FFTBench
+	for (int executionId=-10000; executionId<-1; executionId++) {
+		for(int i=0; i<FFT_LENGTH;i++){
+			complex x;
+			x.re=random_get();
+			x.im=random_get();
+
+			array_in[i]=x;
+		}
+		fft_routine_train(executionId);
+
+	}
+
+	for (int i=0; i<50000; i++) {
+		for(int i=0; i<FFT_LENGTH;i++){
+			complex x;
+			x.re=random_get();
+			x.im=random_get();
+
+			array_in[i]=x;
+		}
+		injectingErrors=0x0;
+		for (int executionId=-1 ;executionId<1280/*1503*//*960*/; executionId++) {
+			fft_routine_test(executionId);
+		}
+	}
+#endif
+
+#ifdef latnavBench
 	for (int i=0; i<25000; i++) {
 		r1=random_get();
 		r2=random_get();
@@ -1285,6 +1541,10 @@ static void prvTaskFour( void *pvParameters )
 		r4=random_get();
 		latnav_train(0, -5);
 	}
+	contr.checkId=0;
+	contr.executionId=0;
+	contr.taskId=0;
+	contr.uniId=0;
 	for (int i=0; i<50000; i++) {
 		r1=random_get();
 		r2=random_get();
@@ -1294,7 +1554,7 @@ static void prvTaskFour( void *pvParameters )
 		//		injectingErrors=0x0;
 		//		FAULTDET_testing_resetGoldens();
 	}
-
+#endif
 	for (;;) {}
 	//	unsigned int benchtime=clk_count_bench_total/clk_count_bench_total_times;
 	//	unsigned int benchtime_train=clk_count_train_total/clk_count_train_total_times;
