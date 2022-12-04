@@ -43,7 +43,7 @@ def main():
     first=True
     #for t in range(1, expTrain+1, 1):
     #    for r in range(1, expRegion+1, 1):
-    reg=16
+    reg=8
     train=15000
 
     procArr.put(subprocess.Popen([args.binary, "-r", str(int(reg)), "-t", str(int(train)), "-e", str(int(executions))], shell=True, stdout=subprocess.PIPE))

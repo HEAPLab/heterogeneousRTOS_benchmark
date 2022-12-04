@@ -31,7 +31,7 @@ float r1, r2, r3, r4;
 #define M_PI 3.14159265358979323846
 #endif
 
-#define FFT_LENGTH 2
+#define FFT_LENGTH 8
 typedef struct{
 	float re,im;
 } complex;
@@ -60,8 +60,8 @@ static complex complex_sum(complex a, complex b, int executionId){
 	res.re=a.re + b.re;
 	res.im=a.im + b.im;
 
-	FAULTDET_testing_injectFault32(b.re, executionId, 32*4, (32*5)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(b.im, executionId, 32*5, (32*6)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
 
 	return res;
 }
@@ -84,8 +84,8 @@ static complex complex_mult(complex a, complex b, int executionId){
 	res.re=(a.re * b.re) - (a.im*b.im);
 	res.im=(a.im*b.re) + (a.re*b.im);
 
-	FAULTDET_testing_injectFault32(b.re, executionId, 32*4, (32*5)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(b.im, executionId, 32*5, (32*6)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
 
 	return res;
 }
@@ -119,7 +119,9 @@ static complex complex_exp(float x, int executionId){
 
 //LOOP1TOTAL=64+LOOP2TOTAL+
 //LOOP2TOTAL=192+
-#define LOOP1TOTAL 1280
+#define LOOP2TOTAL (192*2+96)
+#define LOOP3TOTAL (LOOP2TOTAL)
+#define LOOP1TOTAL (32*4+FFT_LENGTH*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL)
 static void fft_routine(int executionId){
 	int k;
 
@@ -133,54 +135,96 @@ static void fft_routine(int executionId){
 		even_sum.re=0;
 		even_sum.im=0;
 
+		for(n=0;n<FFT_LENGTH;n=n+2){
+			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (32*2+n*LOOP2TOTAL+k*LOOP1TOTAL)); //96
+			complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (32*2+96+n*LOOP2TOTAL+k*LOOP1TOTAL)); //192
+
+			complex_sum(even_sum,n_term,  executionId - (32*2+96+192+n*LOOP2TOTAL+k*LOOP1TOTAL)); //192
+		}
 		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+k*LOOP1TOTAL, (32*1)-1+k*LOOP1TOTAL, injectingErrors);
 		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+k*LOOP1TOTAL, (32*2)-1+k*LOOP1TOTAL, injectingErrors);
 
-		for(n=0;n<FFT_LENGTH;n=n+2){
-			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - ((32*4)+192*5+k*LOOP1TOTAL)), executionId - ((32*2)+k*LOOP1TOTAL)); //192
+		float v1=array_in[0].re+array_in[2].re;
+		float v2=array_in[4].re+array_in[6].re;
+		float v3=array_in[0].im+array_in[2].im;
+		float v4=array_in[4].im+array_in[6].im;
 
-			complex_sum(even_sum,n_term,  executionId - ((32*2)+k*LOOP1TOTAL) - 192); //192
+		if (executionId<-1) {
+			FAULTDET_trainPoint(
+					1,
+					k,  //checkId
+					6,
+					&(v1), &(v2), &(v3), &(v4), &(even_sum.re),  &(even_sum.im));
+		} else {
+			FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+					&inst,
+#endif
+					1, //uniId
+					k, //checkId
+					0, //BLOCKING OR NON BLOCKING, non blocking
+#ifdef testingCampaign
+					injectingErrors,
+					4,
+					5,
+					0,
+					executionId,
+#endif
+					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					&(v1), &(v2), &(v3), &(v4), &(even_sum.re),  &(even_sum.im));
 		}
+
 
 
 		odd_sum.re=0;
 		odd_sum.im=0;
 
-		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2)+192*2+k*LOOP1TOTAL, (32*3)-1+192*2+k*LOOP1TOTAL, injectingErrors);
-		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3)+192*2+k*LOOP1TOTAL, (32*4)-1+192*2+k*LOOP1TOTAL, injectingErrors);
 
 		for(n=1;n<FFT_LENGTH;n=n+2){
-			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - ((32*4)+192*5+96+k*LOOP1TOTAL)), executionId - ((32*4)+192*2+k*LOOP1TOTAL) ); //192
+			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (32*4+n*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL) ); //96
+			complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (32*4+96+n*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL) ); //192
 
-			complex_sum(odd_sum,n_term,  executionId - ((32*4)+192*3+k*LOOP1TOTAL)); //192
+			complex_sum(odd_sum,n_term,  executionId - (32*4+96+192+n*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL)); //192
 		}
 
-		array_out[k] = complex_sum(even_sum,odd_sum, executionId - ((32*4)+192*4+k*LOOP1TOTAL)); //192
-	}
+		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL), (32*3-1+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL), injectingErrors);
+		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL), (32*4-1+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL), injectingErrors);
 
-	if (executionId<-1) {
-		FAULTDET_trainPoint(
-				1,
-				0,  //checkId
-				8,
-				&(array_in[0].re), &(array_in[0].im),  &(array_in[1].re),  &(array_in[1].im), &(array_out[0].re), &(array_out[0].im),  &(array_out[1].re),  &(array_out[1].im));
-	} else {
-		FAULTDET_testPoint(
+
+		v1=array_in[1].re+array_in[3].re;
+		v2=array_in[5].re+array_in[7].re;
+		v3=array_in[1].im+array_in[3].im;
+		v4=array_in[5].im+array_in[7].im;
+
+		if (executionId<-1) {
+			FAULTDET_trainPoint(
+					1,
+					k,  //checkId
+					6,
+					&(v1), &(v2), &(v3), &(v4), &(odd_sum.re),  &(odd_sum.im));
+		} else {
+			FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
-				&inst,
+					&inst,
 #endif
-				1, //uniId
-				0, //checkId
-				0, //BLOCKING OR NON BLOCKING, non blocking
+					1, //uniId
+					k, //checkId
+					0, //BLOCKING OR NON BLOCKING, non blocking
 #ifdef testingCampaign
-				injectingErrors,
-				3,
-				7,
-				0,
-				executionId,
+					injectingErrors,
+					4,
+					5,
+					0,
+					executionId,
 #endif
-				8, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				&(array_in[0].re), &(array_in[0].im),  &(array_in[1].re),  &(array_in[1].im), &(array_out[0].re), &(array_out[0].im),  &(array_out[1].re),  &(array_out[1].im));
+					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					&(v1), &(v2), &(v3), &(v4), &(odd_sum.re),  &(odd_sum.im));
+		}
+
+		complex out=complex_sum(even_sum,odd_sum, -10/*executionId - (32*4+FFT_LENGTH*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL)*/);
+
+
+		array_out[k] = out; //192
 	}
 #ifdef testingCampaign
 	if (executionId>=-1) {
@@ -671,7 +715,7 @@ int main(int argc, char * const argv[])
 	if (executions==0)
 		executions=4000;
 	if (regs==0)
-		regs=16;
+		regs=8;
 	if (trainIter==0)
 		trainIter=200;
 
@@ -713,7 +757,7 @@ int main(int argc, char * const argv[])
 
 	}
 
-	for (int i=0; i<50000; i++) {
+	for (int i=0; i<10000; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -722,7 +766,7 @@ int main(int argc, char * const argv[])
 			array_in[i]=x;
 		}
 		injectingErrors=0x0;
-		for (int executionId=-1 ;executionId<1280/*1503*//*960*/; executionId++) {
+		for (int executionId=-1 ;executionId<LOOP1TOTAL*FFT_LENGTH/*1503*//*960*/; executionId++) {
 			fft_routine(executionId);
 		}
 		FAULTDET_testing_resetGoldens();
