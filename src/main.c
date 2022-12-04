@@ -227,7 +227,7 @@ FAULTDETECTOR_controlStr contr;
 #define M_PI 3.14159265358979323846
 #endif
 
-#define FFT_LENGTH 2
+#define FFT_LENGTH 8
 typedef struct{
 	float re,im;
 } complex;
@@ -247,17 +247,17 @@ static complex array_out[FFT_LENGTH];
 
 //192
 static complex complex_sum(complex a, complex b){
-//	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
-//	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
-//	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
-//	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
 
 	complex res;
 	res.re=a.re + b.re;
 	res.im=a.im + b.im;
 
-//	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
-//	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
 
 	return res;
 }
@@ -271,17 +271,17 @@ static complex complex_sum(complex a, complex b){
 
 //192
 static complex complex_mult(complex a, complex b){
-//	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
-//	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
-//	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
-//	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
 
 	complex res;
 	res.re=(a.re * b.re) - (a.im*b.im);
 	res.im=(a.im*b.re) + (a.re*b.im);
 
-//	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
-//	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
 
 	return res;
 }
@@ -295,14 +295,14 @@ static complex complex_mult(complex a, complex b){
 //96
 static complex complex_exp(float x){
 	/* e^(i*x)=cos(x) + i*sin(x)*/
-//	FAULTDET_testing_injectFault32(x, executionId, 32*0, (32*1)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(x, executionId, 32*0, (32*1)-1, injectingErrors);
 
 	complex res;
 	res.re=cos(x);
 	res.im=sin(x);
 
-//	FAULTDET_testing_injectFault32(res.re, executionId, 32*1, (32*2)-1, injectingErrors);
-//	FAULTDET_testing_injectFault32(res.im, executionId, 32*2, (32*3)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(res.re, executionId, 32*1, (32*2)-1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(res.im, executionId, 32*2, (32*3)-1, injectingErrors);
 
 	return res;
 }
@@ -320,6 +320,7 @@ static void fft_routine_test(int executionId){
 	int k;
 
 	perf_reset_and_start_clock();
+
 	for(k=0;k<FFT_LENGTH;k++){
 
 
@@ -330,48 +331,116 @@ static void fft_routine_test(int executionId){
 		even_sum.re=0;
 		even_sum.im=0;
 
-//		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+k*LOOP1TOTAL, (32*1)-1+k*LOOP1TOTAL, injectingErrors);
-//		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+k*LOOP1TOTAL, (32*2)-1+k*LOOP1TOTAL, injectingErrors);
-
 		for(n=0;n<FFT_LENGTH;n=n+2){
-			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH)); //192
+			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
+			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
 			complex_sum(even_sum,n_term); //192
 		}
 
+		contr.uniId=1;
+		contr.checkId=k;
+		//		contr.taskId=0;
+		//		contr.executionId=0;
+		//		contr.command=2;
+		contr.AOV[0]=array_in[0].re+array_in[2].re;
+		contr.AOV[1]=array_in[4].re+array_in[6].re;
+		contr.AOV[2]=array_in[0].im+array_in[2].im;
+		contr.AOV[3]=array_in[4].im+array_in[6].im;
+		contr.AOV[4]=even_sum.re;
+		contr.AOV[5]=even_sum.im;
+		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		//		FAULTDET_Test(&contr);
+		FAULTDET_testPoint(&contr);
 
 		odd_sum.re=0;
 		odd_sum.im=0;
 
-//		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2)+192*2+k*LOOP1TOTAL, (32*3)-1+192*2+k*LOOP1TOTAL, injectingErrors);
-//		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3)+192*2+k*LOOP1TOTAL, (32*4)-1+192*2+k*LOOP1TOTAL, injectingErrors);
 
 		for(n=1;n<FFT_LENGTH;n=n+2){
-			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH) ); //192
+			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
+			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
 			complex_sum(odd_sum,n_term); //192
 		}
 
-		array_out[k] = complex_sum(even_sum,odd_sum); //192
+
+		contr.uniId=1;
+		contr.checkId=k;
+		//		contr.taskId=0;
+		//		contr.executionId=0;
+		//		contr.command=2;
+		contr.AOV[0]=array_in[1].re+array_in[3].re;
+		contr.AOV[1]=array_in[5].re+array_in[7].re;
+		contr.AOV[2]=array_in[1].im+array_in[3].im;
+		contr.AOV[3]=array_in[5].im+array_in[7].im;
+		contr.AOV[4]=odd_sum.re;
+		contr.AOV[5]=odd_sum.im;
+		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		//		FAULTDET_Test(&contr);
+		FAULTDET_testPoint(&contr);
+
+		complex out=complex_sum(even_sum,odd_sum);
+
+
+		array_out[k] = out; //192
 	}
 
 
-	contr.uniId=1;
-	contr.checkId=0;
-	//		contr.taskId=0;
-	//		contr.executionId=0;
-	//		contr.command=2;
-	contr.AOV[0]=array_in[0].re;
-	contr.AOV[1]=array_in[0].im;
-	contr.AOV[2]=array_in[1].re;
-	contr.AOV[3]=array_in[1].im;
-	contr.AOV[4]=array_out[0].re;
-	contr.AOV[5]=array_out[0].im;
-	contr.AOV[6]=array_out[1].re;
-	contr.AOV[7]=array_out[1].im;
-	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		FAULTDET_Test(&contr);
-	FAULTDET_testPoint(&contr);
+
+
+	//	for(k=0;k<FFT_LENGTH;k++){
+	//
+	//
+	//		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
+	//		int n;
+	//		complex even_sum,odd_sum;
+	//
+	//		even_sum.re=0;
+	//		even_sum.im=0;
+	//
+	//		//		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+k*LOOP1TOTAL, (32*1)-1+k*LOOP1TOTAL, injectingErrors);
+	//		//		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+k*LOOP1TOTAL, (32*2)-1+k*LOOP1TOTAL, injectingErrors);
+	//
+	//		for(n=0;n<FFT_LENGTH;n=n+2){
+	//			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH)); //192
+	//
+	//			complex_sum(even_sum,n_term); //192
+	//		}
+	//
+	//
+	//		odd_sum.re=0;
+	//		odd_sum.im=0;
+	//
+	//		//		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2)+192*2+k*LOOP1TOTAL, (32*3)-1+192*2+k*LOOP1TOTAL, injectingErrors);
+	//		//		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3)+192*2+k*LOOP1TOTAL, (32*4)-1+192*2+k*LOOP1TOTAL, injectingErrors);
+	//
+	//		for(n=1;n<FFT_LENGTH;n=n+2){
+	//			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH) ); //192
+	//
+	//			complex_sum(odd_sum,n_term); //192
+	//		}
+	//
+	//		array_out[k] = complex_sum(even_sum,odd_sum); //192
+	//	}
+	//
+	//
+	//	contr.uniId=1;
+	//	contr.checkId=0;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=array_in[0].re;
+	//	contr.AOV[1]=array_in[0].im;
+	//	contr.AOV[2]=array_in[1].re;
+	//	contr.AOV[3]=array_in[1].im;
+	//	contr.AOV[4]=array_out[0].re;
+	//	contr.AOV[5]=array_out[0].im;
+	//	contr.AOV[6]=array_out[1].re;
+	//	contr.AOV[7]=array_out[1].im;
+	//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//	//		FAULTDET_Test(&contr);
+	//	//	FAULTDET_testPoint(&contr);
 	perf_stop_clock();
 	printf("%u\n", get_clock_L());
 	if (get_clock_U()!=0)
@@ -391,50 +460,56 @@ static void fft_routine_train(int executionId){
 		even_sum.re=0;
 		even_sum.im=0;
 
-//		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+k*LOOP1TOTAL, (32*1)-1+k*LOOP1TOTAL, injectingErrors);
-//		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+k*LOOP1TOTAL, (32*2)-1+k*LOOP1TOTAL, injectingErrors);
-
 		for(n=0;n<FFT_LENGTH;n=n+2){
-			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH)); //192
+			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
+			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
 			complex_sum(even_sum,n_term); //192
 		}
+
+		float v1=array_in[0].re+array_in[2].re;
+		float v2=array_in[4].re+array_in[6].re;
+		float v3=array_in[0].im+array_in[2].im;
+		float v4=array_in[4].im+array_in[6].im;
+
+		FAULTDET_trainPoint(
+				1,
+				k,  //checkId
+				6,
+				&(v1), &(v2), &(v3), &(v4), &(even_sum.re),  &(even_sum.im));
 
 
 		odd_sum.re=0;
 		odd_sum.im=0;
 
-//		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2)+192*2+k*LOOP1TOTAL, (32*3)-1+192*2+k*LOOP1TOTAL, injectingErrors);
-//		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3)+192*2+k*LOOP1TOTAL, (32*4)-1+192*2+k*LOOP1TOTAL, injectingErrors);
 
 		for(n=1;n<FFT_LENGTH;n=n+2){
-			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH )); //192
+			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
+			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
 			complex_sum(odd_sum,n_term); //192
 		}
 
-		array_out[k] = complex_sum(even_sum,odd_sum); //192
-	}
 
-	FAULTDET_trainPoint(
-			1,
-			0,  //checkId
-			8,
-			&(array_in[0].re), &(array_in[0].im),  &(array_in[1].re),  &(array_in[1].im), &(array_out[0].re), &(array_out[0].im),  &(array_out[1].re),  &(array_out[1].im));
+		v1=array_in[1].re+array_in[3].re;
+		v2=array_in[5].re+array_in[7].re;
+		v3=array_in[1].im+array_in[3].im;
+		v4=array_in[5].im+array_in[7].im;
 
-#ifdef testingCampaign
-	if (executionId>=-1) {
-		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
-	}
+		FAULTDET_trainPoint(
+				1,
+				k,  //checkId
+				6,
+				&(v1), &(v2), &(v3), &(v4), &(odd_sum.re),  &(odd_sum.im));
 
-	if (executionId==-1) {
 
-		injectingErrors=0xFF;
+		complex out=complex_sum(even_sum,odd_sum);
+
+
+		array_out[k] = out; //192
 	}
 #endif
 }
-
-#endif
 
 
 float r1, r2, r3, r4;
@@ -1505,6 +1580,7 @@ static void prvTaskFour( void *pvParameters )
 	//	}
 	//	printf("clk train mean: %u clk test mean: %u", getMeanTrainClock(), getMeanTestClock());
 
+
 #ifdef FFTBench
 	for (int executionId=-10000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
@@ -1518,7 +1594,7 @@ static void prvTaskFour( void *pvParameters )
 
 	}
 
-	for (int i=0; i<50000; i++) {
+	for (int i=0; i<10000; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1527,7 +1603,7 @@ static void prvTaskFour( void *pvParameters )
 			array_in[i]=x;
 		}
 		injectingErrors=0x0;
-		for (int executionId=-1 ;executionId<1280/*1503*//*960*/; executionId++) {
+		for (int executionId=-1 ;executionId<LOOP1TOTAL*FFT_LENGTH/*1503*//*960*/; executionId++) {
 			fft_routine_test(executionId);
 		}
 	}
