@@ -1341,7 +1341,7 @@ void imgScaling(int executionId) {
 						ctr*5+1, //uniId
 						0, //checkId
 						0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 						injectingErrors,
 #endif
 						6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
@@ -1402,7 +1402,7 @@ void imgScaling(int executionId) {
 						ctr*5+2, //uniId
 						0, //checkId
 						0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 						injectingErrors,
 #endif
 						6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
@@ -1465,7 +1465,7 @@ void imgScaling(int executionId) {
 						ctr*5+3, //uniId
 						0, //checkId
 						0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 						injectingErrors,
 #endif
 						6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
@@ -1526,7 +1526,7 @@ void imgScaling(int executionId) {
 						ctr*5+4, //uniId
 						0, //checkId
 						0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 						injectingErrors,
 #endif
 						6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
@@ -1543,7 +1543,7 @@ void imgScaling(int executionId) {
 
 #endif
 			//#ifndef trainMode
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 			FAULTDET_testing_injectFault32(col0, executionId, 768, 799, injectingErrors);
 			FAULTDET_testing_injectFault32(col1, executionId, 800, 831, injectingErrors);
 			FAULTDET_testing_injectFault32(col2, executionId, 832, 863, injectingErrors);
@@ -1574,7 +1574,7 @@ void imgScaling(int executionId) {
 						ctr*5+5, //uniId
 						0, //checkId
 						0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 						injectingErrors,
 #endif
 						6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
@@ -1582,7 +1582,7 @@ void imgScaling(int executionId) {
 				//#endif
 			}
 
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 			//#ifndef trainMode
 			if (injectingErrors) {
 				FAULTDET_testing_commitTmpStatsAndReset();
@@ -1618,7 +1618,7 @@ void imgScaling(int executionId) {
 	//		vTaskJobEnd();
 
 
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 	//#ifndef trainMode
 	if (executionId>=-1) {
 		printf(" total: %d ", FAULTDET_testing_getTotal());
