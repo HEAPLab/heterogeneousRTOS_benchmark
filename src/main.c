@@ -15,7 +15,7 @@
 //#include "xil_printf.h"
 
 //#define testingCampaign
-//#define FAULTDETECTOR_EXECINSW
+#define FAULTDETECTOR_EXECINSW
 //#define trainMode
 #define onOutputOnly
 
@@ -1582,7 +1582,7 @@ static void prvTaskFour( void *pvParameters )
 
 
 #ifdef FFTBench
-	for (int executionId=-10000; executionId<-1; executionId++) {
+	for (int executionId=-1000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1602,10 +1602,7 @@ static void prvTaskFour( void *pvParameters )
 
 			array_in[i]=x;
 		}
-		injectingErrors=0x0;
-		for (int executionId=-1 ;executionId<LOOP1TOTAL*FFT_LENGTH/*1503*//*960*/; executionId++) {
-			fft_routine_test(executionId);
-		}
+		fft_routine_test(-1);
 	}
 #endif
 
