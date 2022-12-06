@@ -39,7 +39,7 @@ float r1, r2, r3, r4;
 #define NN_EPOCH 1
 
 #define ARRAY_LENGTH 8
-#define BURST_LENGTH 16
+#define BURST_LENGTH 1
 
 static float test_in[BURST_LENGTH][IN_NODES];
 static float test_out[BURST_LENGTH][OUT_NODES];
@@ -65,9 +65,9 @@ static float sigmoid(float x){
 }
 
 static float sigmoid_fault(float x, int executionId){
-	FAULTDET_testing_injectFault32(x, executionId, 32*0, (32*1)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(x, executionId, 32*0, injectingErrors);
 	float res=1/(1+exp(-x));
-	FAULTDET_testing_injectFault32(res, executionId, 32*1, (32*2)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(res, executionId, 32*1, injectingErrors);
 	return res;
 }
 static float d_sigmoid(float x){
@@ -155,12 +155,12 @@ static void forward_pass(int train_idx){
 
 #define LOOP6TOTAL (32*3)
 #define LOOP5TOTAL (64+LOOP6TOTAL*HIDDEN_NODES)
-#define LOOP4TOTAL ((LOOP5TOTAL*HIDDEN_NODES)*(HIDDEN_LAYERS-1))
+#define LOOP4TOTAL (LOOP5TOTAL*HIDDEN_NODES)
 
 #define LOOP8TOTAL (32*3)
 #define LOOP7TOTAL (64+LOOP8TOTAL*HIDDEN_NODES)
 
-#define LOOP1TOTAL (LOOP2TOTAL*HIDDEN_NODES+LOOP4TOTAL*HIDDEN_LAYERS+LOOP7TOTAL*OUT_NODES)
+#define LOOP1TOTAL (LOOP2TOTAL*HIDDEN_NODES+LOOP4TOTAL*(HIDDEN_LAYERS-1)+LOOP7TOTAL*OUT_NODES)
 
 static void forward_pass_test_burst(int executionId){
 	int h,l,y;
@@ -178,15 +178,13 @@ static void forward_pass_test_burst(int executionId){
 
 			activation=hl_bias[0][h];
 
-			//			FAULTDET_testing_injectFault32(activation, executionId, 32*0+LOOP2TOTAL*h+LOOP1TOTAL*b, (32*1)-1+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
-
 			for(x=0;x<IN_NODES;x++){ //LOOP3
 				float v1=in_weight[x][h];
 				float v2=test_in[b][x];
-				FAULTDET_testing_injectFault32(v1, executionId, 32*0+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, (32*1)-1+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
-				FAULTDET_testing_injectFault32(v2, executionId, 32*1+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, (32*2)-1+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
+				FAULTDET_testing_injectFault32(v1, executionId, 32*0+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
+				FAULTDET_testing_injectFault32(v2, executionId, 32*1+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
 
-				FAULTDET_testing_injectFault32(activation, executionId, 32*2+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, (32*3)-1+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
+				FAULTDET_testing_injectFault32(activation, executionId, 32*2+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
 
 				activation+=(v1*v2);
 			}
@@ -200,21 +198,19 @@ static void forward_pass_test_burst(int executionId){
 
 				activation=hl_bias[l][h];
 
-				//				FAULTDET_testing_injectFault32(activation, executionId, 32*0+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*1-1+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
-
 				for(x=0;x<HIDDEN_NODES;x++){ //LOOP6
 					float v1=hl_weight[l][h][x];
 					float v2=temp_out[l-1][h];
 
-					FAULTDET_testing_injectFault32(v1, executionId, 32*0+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*1-1+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
-					FAULTDET_testing_injectFault32(v2, executionId, 32*1+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*2-1+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+					FAULTDET_testing_injectFault32(v1, executionId, 32*0+LOOP6TOTAL*x+LOOP4TOTAL*(l-1)+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+					FAULTDET_testing_injectFault32(v2, executionId, 32*1+LOOP6TOTAL*x+LOOP4TOTAL*(l-1)+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
 
-					FAULTDET_testing_injectFault32(activation, executionId, 32*2+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*3-1+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+					FAULTDET_testing_injectFault32(activation, executionId, 32*2+LOOP6TOTAL*x+LOOP4TOTAL*(l-1)+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
 
 					activation+=(v1*v2);
 
 				}
-				temp_out[l][h]=sigmoid_fault(activation, executionId - (LOOP6TOTAL*HIDDEN_NODES+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b));
+				temp_out[l][h]=sigmoid_fault(activation, executionId - (LOOP6TOTAL*HIDDEN_NODES+LOOP4TOTAL*(l-1)+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b));
 			}
 		}
 
@@ -223,19 +219,17 @@ static void forward_pass_test_burst(int executionId){
 
 			activation=out_bias[y];
 
-			//			FAULTDET_testing_injectFault32(activation, executionId, 32*0+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*1-1+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
-
 			for(h=0;h<HIDDEN_NODES;h++){ //LOOP8
 				float v1=out_weight[h][y];
 				float v2=temp_out[HIDDEN_LAYERS-1][h];
-				FAULTDET_testing_injectFault32(v1, executionId, 32*0+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*1-1+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
-				FAULTDET_testing_injectFault32(v2, executionId, 32*1+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*2-1+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+				FAULTDET_testing_injectFault32(v1, executionId, 32*0+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*(HIDDEN_LAYERS-1)+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+				FAULTDET_testing_injectFault32(v2, executionId, 32*1+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*(HIDDEN_LAYERS-1)+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
 
-				FAULTDET_testing_injectFault32(activation, executionId, 32*2+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*3-1+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+				FAULTDET_testing_injectFault32(activation, executionId, 32*2+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*(HIDDEN_LAYERS-1)+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
 
 				activation+=(v1*v2);
 			}
-			test_out[b][y]=sigmoid_fault(activation, executionId - (LOOP8TOTAL*HIDDEN_NODES+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b));
+			test_out[b][y]=sigmoid_fault(activation, executionId - (LOOP8TOTAL*HIDDEN_NODES+LOOP7TOTAL*y+LOOP4TOTAL*(HIDDEN_LAYERS-1)+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b));
 		}
 
 		if (executionId<-1) {
@@ -243,7 +237,7 @@ static void forward_pass_test_burst(int executionId){
 					b,
 					0,  //ceckId
 					5,
-					&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(test_out[b][1]));
+					&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(test_out[b][0]));
 		} else {
 			FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
@@ -260,7 +254,7 @@ static void forward_pass_test_burst(int executionId){
 					executionId,
 #endif
 					5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(test_out[b][1]));
+					&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(test_out[b][0]));
 		}
 	}
 	if (executionId>=-1) {
@@ -1075,16 +1069,20 @@ int main(int argc, char * const argv[])
 	init_train_data();
 	train_ann_routine();
 
-	for (int i=-5000; i<-1; i++) {
+//	init_test_data();
+//	forward_pass_test_burst(-2);
+
+	for (int i=-15000; i<-1; i++) {
 		init_test_data();
 		forward_pass_test_burst(i);
 	}
 
-	for (int i=0; i<50; i++) {
+	for (int i=0; i<500; i++) {
 		init_test_data();
-		injectingErrors=0x0;
 
-		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH/*1503*//*960*/; executionId++) {
+		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH; executionId++) {
+//			if (executionId==107698)
+//				printf("halt");
 			forward_pass_test_burst(executionId);
 		}
 		FAULTDET_testing_resetGoldens();
