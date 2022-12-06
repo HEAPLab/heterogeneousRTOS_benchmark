@@ -11,37 +11,27 @@
     1 tab == 4 spaces!
  */
 
-/* FreeRTOS includes. */
 //#include "xil_printf.h"
 
-//#define testingCampaign
-#define FAULTDETECTOR_EXECINSW
-//#define trainMode
 #define onOutputOnly
 
 #include "FreeRTOS.h"
 #include "task.h"
-/* Xilinx includes. */
 
 #include "portable.h"
 
 #include "perf_timer.h"
 
-//#define imgscalingBench
-#define FFTBench
-//
-//#ifdef trainMode
-#ifdef imgscalingBench
+#define FAULTDETECTOR_EXECINSW
 
-#define IMG_HEIGHT 16
-#define IMG_WIDTH 16
-static unsigned char mat_in[IMG_HEIGHT][IMG_WIDTH];
-unsigned char mat_out[IMG_HEIGHT][IMG_WIDTH];
-#endif
+#define ANNBench
+//#define imgscalingBench
+//#define FFTBench
+//#define latnavBench
 
 #include "simple_random.h"
 
-//#else
+//#ifdef imgscalingBench
 //#include "scaling_image.h"
 //#endif
 /*-----------------------------------------------------------*/
@@ -51,29 +41,28 @@ static void prvTaskOne( void *pvParameters );
 static void prvTaskTwo( void *pvParameters );
 static void prvTaskThree( void *pvParameters );
 static void prvTaskFour( void *pvParameters );
-//static void prvImgAcquireAndScaleTask( void *pvParameters );
 #include <stdio.h>
 
 
 static FAULTDETECTOR_region_t trainedRegions[FAULTDETECTOR_MAX_CHECKS][FAULTDETECTOR_MAX_REGIONS];
 static u8 n_regions[FAULTDETECTOR_MAX_CHECKS];
 
-void printBits(size_t const size, void const * const ptr)
-{
-	printf(" ");
-	unsigned char *b = (unsigned char*) ptr;
-	unsigned char byte;
-	int i, j;
-
-	for (i = size-1; i >= 0; i--) {
-		for (j = 7; j >= 0; j--) {
-			byte = (b[i] >> j) & 1;
-			printf("%u", byte);
-		}
-	}
-	puts("");
-	printf(" ");
-}
+//void printBits(size_t const size, void const * const ptr)
+//{
+//	printf(" ");
+//	unsigned char *b = (unsigned char*) ptr;
+//	unsigned char byte;
+//	int i, j;
+//
+//	for (i = size-1; i >= 0; i--) {
+//		for (j = 7; j >= 0; j--) {
+//			byte = (b[i] >> j) & 1;
+//			printf("%u", byte);
+//		}
+//	}
+//	puts("");
+//	printf(" ");
+//}
 
 
 int main( void )
@@ -140,28 +129,6 @@ int main( void )
 				trainedRegions[i][j].center[k]=0.0f;
 				trainedRegions[i][j].max[k]=0.0f;
 				trainedRegions[i][j].min[k]=0.0f;
-
-				//				if (j>=0 && j<=2) {
-				//					if (k>=0 && k<1) {
-				//					trainedRegions[i][j].center[k]=0.0f;
-				//					trainedRegions[i][j].max[k]=1000.0f;
-				//					trainedRegions[i][j].min[k]=-1000.0f;
-				//					} else if ( k<=2 ) {
-				//						trainedRegions[i][j].center[k]=1000.0f;
-				//						trainedRegions[i][j].max[k]=1000.0f;
-				//						trainedRegions[i][j].min[k]=1000.0f;
-				//					}
-				//				} else if (j>=3 && j<=5) {
-				//					if (k>=0 && k<=)
-				//					trainedRegions[i][j].center[k]=0.0f;
-				//					trainedRegions[i][j].max[k]=1000.0f;
-				//					trainedRegions[i][j].min[k]=-1000.0f;
-				//				} else if (j==6) {
-				//					trainedRegions[i][j].center[k]=0.0f;
-				//					trainedRegions[i][j].max[k]=1000.0f;
-				//					trainedRegions[i][j].min[k]=-1000.0f;
-				//				}
-
 			}
 		}
 
@@ -214,9 +181,356 @@ static void prvTaskThree( void *pvParameters )
 	}
 }
 
-
-u8 injectingErrors=0;
 FAULTDETECTOR_controlStr contr;
+
+#ifdef ANNBench
+
+#include "simple_random.h"
+
+#include <math.h>
+
+#define IN_NODES 4
+
+#define HIDDEN_NODES 2
+#define HIDDEN_LAYERS 4
+
+#define OUT_NODES 1
+#define LR 0.1
+#define NN_EPOCH 1
+
+#define ARRAY_LENGTH 8
+#define BURST_LENGTH 1
+
+static float test_in[BURST_LENGTH][IN_NODES];
+static float test_out[BURST_LENGTH][OUT_NODES];
+
+static float train_in[ARRAY_LENGTH][IN_NODES];
+static float train_out[ARRAY_LENGTH][OUT_NODES];
+static float net_out[OUT_NODES];
+
+static float in_weight[IN_NODES][HIDDEN_NODES];
+
+static float hl_weight[HIDDEN_LAYERS][HIDDEN_NODES][HIDDEN_NODES];
+static float hl_bias[HIDDEN_LAYERS][HIDDEN_NODES];
+
+static float out_weight[HIDDEN_NODES][OUT_NODES];
+static float out_bias[OUT_NODES];
+
+static float temp_out[HIDDEN_LAYERS][HIDDEN_NODES];
+static float delta_out[OUT_NODES];
+static float delta_hidden[HIDDEN_LAYERS][HIDDEN_NODES];
+
+static float sigmoid(float x){
+	return 1/(1+exp(-x));
+}
+
+static float d_sigmoid(float x){
+	return x*(1-x);
+}
+static void init_train_data(){
+	int i;
+	for (i = 0; i < ARRAY_LENGTH; i++){
+		for (int a=0; a<IN_NODES;a++) {
+			train_in[i][a]=random_get();
+		}
+	}
+	for (i = 0; i < ARRAY_LENGTH; i++){
+		for (int a=0; a<OUT_NODES;a++) {
+			train_out[i][a]=random_get();
+		}
+	}
+}
+
+
+static void init_test_data(){
+	for (int i=0; i<BURST_LENGTH; i++) {
+		for (int a=0; a<IN_NODES;a++) {
+			test_in[i][a]=random_get();
+		}
+	}
+}
+
+
+static void init_weights(){
+	int i,h,l;
+
+	for(i=0;i<IN_NODES;i++){
+		for ( h = 0; h < HIDDEN_NODES; h++){
+			in_weight[i][h]=random_get();
+		}
+
+	}
+	for(l=0;l<HIDDEN_LAYERS;l++){
+		for ( h = 0; h < HIDDEN_NODES; h++){
+			hl_bias[l][h]=random_get();
+			for(i=0;i<HIDDEN_NODES;i++){
+				hl_weight[l][h][i]=random_get();
+			}
+		}
+
+	}
+
+	for(i=0;i<OUT_NODES;i++){
+		out_bias[i]=random_get();
+		for ( h = 0; h < HIDDEN_NODES; h++){
+			out_weight[h][i]=random_get();
+		}
+	}
+
+}
+static void forward_pass(int train_idx){
+	int h,l,y;
+
+	for(h=0;h<HIDDEN_NODES;h++){
+		int x;
+		float activation;
+
+		activation=hl_bias[0][h];
+		for(x=0;x<IN_NODES;x++){
+			activation+=(in_weight[x][h]*train_in[train_idx][x]);
+		}
+		temp_out[0][h]=sigmoid(activation);
+	}
+	for(l=1;l<HIDDEN_LAYERS;l++){
+		for(h=0;h<HIDDEN_NODES;h++){
+			float activation;
+			int x;
+
+			activation=hl_bias[l][h];
+			for(x=0;x<HIDDEN_NODES;x++){
+				activation+=(hl_weight[l][h][x]*temp_out[l-1][h]);
+			}
+			temp_out[l][h]=sigmoid(activation);
+		}
+	}
+	for(y=0;y<OUT_NODES;y++){
+		float activation;
+
+		activation=out_bias[y];
+		for(h=0;h<HIDDEN_NODES;h++){
+			activation+=(out_weight[h][y]*temp_out[HIDDEN_LAYERS-1][h]);
+		}
+		net_out[y]=sigmoid(activation);
+	}
+}
+
+#define LOOP3TOTAL (32*3)
+#define LOOP2TOTAL (64+LOOP3TOTAL*IN_NODES)
+
+#define LOOP6TOTAL (32*3)
+#define LOOP5TOTAL (64+LOOP6TOTAL*HIDDEN_NODES)
+#define LOOP4TOTAL (LOOP5TOTAL*HIDDEN_NODES)
+
+#define LOOP8TOTAL (32*3)
+#define LOOP7TOTAL (64+LOOP8TOTAL*HIDDEN_NODES)
+
+#define LOOP1TOTAL (LOOP2TOTAL*HIDDEN_NODES+LOOP4TOTAL*(HIDDEN_LAYERS-1)+LOOP7TOTAL*OUT_NODES)
+
+static void forward_pass_test_burst_train(){
+	int h,l,y;
+
+
+	for (int b=0; b<BURST_LENGTH; b++) { //LOOP1
+
+		for(h=0;h<HIDDEN_NODES;h++){ //LOOP2
+			int x;
+			float activation;
+
+			activation=hl_bias[0][h];
+
+			for(x=0;x<IN_NODES;x++){ //LOOP3
+				float v1=in_weight[x][h];
+				float v2=test_in[b][x];
+
+				activation+=(v1*v2);
+			}
+			temp_out[0][h]=sigmoid(activation); //64
+		}
+
+		for(l=1;l<HIDDEN_LAYERS;l++){ //LOOP4
+			for(h=0;h<HIDDEN_NODES;h++){ //LOOP5
+				float activation;
+				int x;
+
+				activation=hl_bias[l][h];
+
+				for(x=0;x<HIDDEN_NODES;x++){ //LOOP6
+					float v1=hl_weight[l][h][x];
+					float v2=temp_out[l-1][h];
+
+					activation+=(v1*v2);
+
+				}
+				temp_out[l][h]=sigmoid(activation);
+			}
+		}
+
+		for(y=0;y<OUT_NODES;y++){ //LOOP7
+			float activation;
+
+			activation=out_bias[y];
+
+			for(h=0;h<HIDDEN_NODES;h++){ //LOOP8
+				float v1=out_weight[h][y];
+				float v2=temp_out[HIDDEN_LAYERS-1][h];
+
+				activation+=(v1*v2);
+			}
+			test_out[b][y]=sigmoid(activation);
+		}
+
+
+		FAULTDET_trainPoint(
+				b,
+				0,  //ceckId
+				5,
+				&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(test_out[b][0]));
+	}
+}
+
+static void forward_pass_test_burst_test(){
+	int h,l,y;
+	perf_reset_and_start_clock();
+	for (int b=0; b<BURST_LENGTH; b++) { //LOOP1
+
+		for(h=0;h<HIDDEN_NODES;h++){ //LOOP2
+			int x;
+			float activation;
+
+			activation=hl_bias[0][h];
+
+			for(x=0;x<IN_NODES;x++){ //LOOP3
+				float v1=in_weight[x][h];
+				float v2=test_in[b][x];
+
+				activation+=(v1*v2);
+			}
+			temp_out[0][h]=sigmoid(activation); //64
+		}
+
+		for(l=1;l<HIDDEN_LAYERS;l++){ //LOOP4
+			for(h=0;h<HIDDEN_NODES;h++){ //LOOP5
+				float activation;
+				int x;
+
+				activation=hl_bias[l][h];
+
+				for(x=0;x<HIDDEN_NODES;x++){ //LOOP6
+					float v1=hl_weight[l][h][x];
+					float v2=temp_out[l-1][h];
+
+					activation+=(v1*v2);
+
+				}
+				temp_out[l][h]=sigmoid(activation);
+			}
+		}
+
+		for(y=0;y<OUT_NODES;y++){ //LOOP7
+			float activation;
+
+			activation=out_bias[y];
+
+			for(h=0;h<HIDDEN_NODES;h++){ //LOOP8
+				float v1=out_weight[h][y];
+				float v2=temp_out[HIDDEN_LAYERS-1][h];
+
+				activation+=(v1*v2);
+			}
+			test_out[b][y]=sigmoid(activation);
+		}
+
+//		contr.uniId=b;
+//		contr.checkId=0;
+//		//		contr.taskId=0;
+//		//		contr.executionId=0;
+//		//		contr.command=2;
+//		contr.AOV[0]=test_in[b][0];
+//		contr.AOV[1]=test_in[b][1];
+//		contr.AOV[2]=test_in[b][2];
+//		contr.AOV[3]=test_in[b][3];
+//		contr.AOV[4]=test_out[b][0];
+//		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+//		//		FAULTDET_Test(&contr);
+//		FAULTDET_testPoint(&contr);
+	}
+	perf_stop_clock();
+	printf("%u\n", get_clock_L());
+	if (get_clock_U()!=0)
+		printf("err up not 0");
+}
+
+
+static void back_propagation(int train_idx){
+	int y,h,l,x;
+	/*Compute deltas for OUTPUT LAYER*/
+	for(y=0;y<OUT_NODES;y++){
+		delta_out[y] = (train_out[train_idx][y]-net_out[y])*d_sigmoid(net_out[y]);
+	}
+	/* Compute deltas for HIDDEN LAYER */
+	for(h=0;h<HIDDEN_NODES;h++){
+		float d_error;
+
+		d_error=0;
+		for(y=0;y<OUT_NODES;y++){
+			d_error+=delta_out[y]*out_weight[h][y];
+		}
+		delta_hidden[HIDDEN_LAYERS-1][h]=d_error*sigmoid(temp_out[HIDDEN_LAYERS-1][h]);
+	}
+	for(l=HIDDEN_NODES-2;l>=0;l--){
+		for(h=0;h<HIDDEN_NODES;h++){
+			float d_error;
+
+			d_error=0;
+			for(y=0;y<HIDDEN_NODES;y++){
+				d_error+=delta_hidden[l+1][y]*hl_weight[l][h][y];
+			}
+			delta_hidden[l][h]=d_error*sigmoid(temp_out[l][h]);
+		}
+	}
+
+	/*Update weights*/
+	for(y=0;y<OUT_NODES;y++){
+		out_bias[y]+=delta_out[y]*LR;
+		for(h=0;h<HIDDEN_NODES;h++){
+			out_weight[h][y]+=temp_out[HIDDEN_LAYERS-1][h]*delta_out[y]*LR;
+		}
+	}
+	for(l=HIDDEN_NODES-2;l>0;l--){
+		for(h=0;h<HIDDEN_NODES;h++){
+			hl_bias[l][h]+=delta_hidden[l][h]*LR;
+			for(x=0;x<IN_NODES;x++){
+				hl_weight[l][h][x]+=temp_out[l-1][x]*delta_hidden[l][h]*LR;
+			}
+		}
+	}
+
+	for(h=0;h<HIDDEN_NODES;h++){
+		hl_bias[0][h]+=delta_hidden[0][h]*LR;
+		for(x=0;x<IN_NODES;x++){
+			in_weight[x][h]+=train_in[train_idx][x]*delta_hidden[0][h]*LR;
+		}
+	}
+
+}
+
+static void train_ann_routine(){
+	int i,j;
+
+	init_weights();
+	for(i=0; i<NN_EPOCH;i++){
+
+		for(j=0; j<ARRAY_LENGTH; j++){
+			forward_pass(j);
+
+			back_propagation(j);
+		}
+
+	}
+}
+
+
+#endif
 
 
 #ifdef FFTBench
@@ -236,7 +550,6 @@ static complex array_in[FFT_LENGTH];
 static complex array_out[FFT_LENGTH];
 
 
-
 /**
  * @brief It performs sum between two complex numbers
  *
@@ -247,17 +560,9 @@ static complex array_out[FFT_LENGTH];
 
 //192
 static complex complex_sum(complex a, complex b){
-	//	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
-	//	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
-	//	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
-	//	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
-
 	complex res;
 	res.re=a.re + b.re;
 	res.im=a.im + b.im;
-
-	//	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
-	//	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
 
 	return res;
 }
@@ -271,18 +576,9 @@ static complex complex_sum(complex a, complex b){
 
 //192
 static complex complex_mult(complex a, complex b){
-	//	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
-	//	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
-	//	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
-	//	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
-
 	complex res;
 	res.re=(a.re * b.re) - (a.im*b.im);
 	res.im=(a.im*b.re) + (a.re*b.im);
-
-	//	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
-	//	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
-
 	return res;
 }
 /**
@@ -313,10 +609,9 @@ static complex complex_exp(float x){
  * @return Fourier transform for input array
  */
 
-//LOOP1TOTAL=64+LOOP2TOTAL+
-//LOOP2TOTAL=192+
+
 #define LOOP1TOTAL 1280
-static void fft_routine_test(int executionId){
+static void fft_routine_test(){
 	int k;
 
 	perf_reset_and_start_clock();
@@ -447,7 +742,7 @@ static void fft_routine_test(int executionId){
 		printf("err up not 0");
 }
 
-static void fft_routine_train(int executionId){
+static void fft_routine_train(){
 	int k;
 
 	for(k=0;k<FFT_LENGTH;k++){
@@ -508,8 +803,8 @@ static void fft_routine_train(int executionId){
 
 		array_out[k] = out; //192
 	}
-#endif
 }
+#endif
 
 
 float r1, r2, r3, r4;
@@ -539,77 +834,35 @@ typedef struct pid_controller_s {
 
 
 
-float run_pid(pid_controller_t* pid, float error, int executionId) {
+float run_pid(pid_controller_t* pid, float error) {
 	float output;
-#ifdef testingCampaign
-	FAULTDET_testing_injectFault32(pid->p, executionId, 32*0, (32*1)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->i, executionId, 32*1, (32*2)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->d, executionId, 32*2, (32*3)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->b, executionId, 32*3, (32*4)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->prev_error, executionId, 32*4, (32*5)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->integral_sum, executionId, 32*5, (32*6)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->backpropagation, executionId, 32*6, (32*7)-1, injectingErrors);
-#endif
 	output = error * pid->p;
-#ifdef testingCampaign
-
-	FAULTDET_testing_injectFault32(output, executionId, 32*7, (32*8)-1, injectingErrors);
-#endif
 	pid->integral_sum += ((error * pid->i) + (pid->b * pid->backpropagation)) * TIME_STEP;
-#ifdef testingCampaign
-	FAULTDET_testing_injectFault32(pid->integral_sum, executionId, 32*8, (32*9)-1, injectingErrors);
-#endif
 	output += pid->integral_sum;
-#ifdef testingCampaign
-
-	FAULTDET_testing_injectFault32(output, executionId, 32*9, (32*10)-1, injectingErrors);
-#endif
 	output += pid->d * (error - pid->prev_error) / TIME_STEP;
-#ifdef testingCampaign
-
-	FAULTDET_testing_injectFault32(output, executionId, 32*10, (32*11)-1, injectingErrors);
-#endif
 	pid->prev_error = error;
 
 	return output;
 }
 
-float roll_limiter(float desired_roll, float speed, int executionId) {
+float roll_limiter(float desired_roll, float speed) {
 	float limit_perc,limit;
-#ifdef testingCampaign
 
-	FAULTDET_testing_injectFault32(speed, executionId, 32*0, (32*1)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(desired_roll, executionId, 32*4, (32*5)-1, injectingErrors);
-#endif
 	if (speed <= 140) {
 		return CLAMP(desired_roll, -30, 30);
 	}
 	if (speed >= 300) {
 		return CLAMP(desired_roll, -40, 40);
 	}
-#ifdef testingCampaign
 
-	FAULTDET_testing_injectFault32(speed, executionId, 32*1, (32*2)-1, injectingErrors);
-#endif
 	limit_perc = (speed < 220) ? (speed-140) / 80 : ((speed-220) / 80);
-#ifdef testingCampaign
 
-	FAULTDET_testing_injectFault32(limit_perc, executionId, 32*2, (32*3)-1, injectingErrors);
-#endif
 	limit = (speed < 220) ? (30 + limit_perc * 37) : (40 + (1-limit_perc) * 27);
-#ifdef testingCampaign
 
-	FAULTDET_testing_injectFault32(limit, executionId, 32*3, (32*4)-1, injectingErrors);
-#endif
 	return CLAMP (desired_roll, -limit, limit);
 }
 
-float roll_rate_limiter(float desired_roll_rate, float roll, int executionId) {
-#ifdef testingCampaign
-	FAULTDET_testing_injectFault32(roll, executionId, 32*0, (32*1)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(desired_roll_rate, executionId, 32*1, (32*2)-1, injectingErrors);
-#endif
-
+float roll_rate_limiter(float desired_roll_rate, float roll) {
 	if (roll < 20 && roll > -20) {
 		return CLAMP (desired_roll_rate, -5, 5);
 	} else if (roll < 30 && roll > -30) {
@@ -619,24 +872,11 @@ float roll_rate_limiter(float desired_roll_rate, float roll, int executionId) {
 	}
 }
 
-float ailerons_limiter(float aileron, int executionId) {
-#ifdef testingCampaign
-
-	FAULTDET_testing_injectFault32(aileron, executionId, 32*0, (32*1)-1, injectingErrors);
-#endif
+float ailerons_limiter(float aileron) {
 	return CLAMP(aileron, -30, 30);
 }
 
-float r1, r2, r3, r4;
-
-volatile unsigned long long int clk_count_bench_total=0;
-volatile unsigned int clk_count_bench_total_times=0;
-
-
-volatile unsigned long long int clk_count_train_total=0;
-volatile unsigned int clk_count_train_total_times=0;
-
-void latnav_train(int roundId, int executionId) {
+void latnav_train() {
 
 	//#ifndef FAULTDETECTOR_EXECINSW
 	//	FAULTDET_ExecutionDescriptor inst;
@@ -684,8 +924,6 @@ void latnav_train(int roundId, int executionId) {
 	curr_roll_rate = r3;
 
 
-
-
 	for(i=0; i<1; i++) {
 
 		float desired_roll,actual_roll,desired_roll_rate,actual_roll_rate,desired_ailerons,actual_ailerons;
@@ -694,8 +932,8 @@ void latnav_train(int roundId, int executionId) {
 		float pid_heading_backpropagation_orig=pid_heading.backpropagation;
 		float err_orig=err;
 
-		desired_roll = run_pid(&pid_heading, err, executionId);
-		actual_roll = roll_limiter(desired_roll, 400, executionId-(32*11));
+		desired_roll = run_pid(&pid_heading, err);
+		actual_roll = roll_limiter(desired_roll, 400);
 
 
 		FAULTDET_trainPoint(
@@ -706,43 +944,15 @@ void latnav_train(int roundId, int executionId) {
 				/*&(pid_heading.b),*/ &(pid_heading.backpropagation), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err, &desired_roll, &actual_roll);//, &actual_roll);
 
 
-
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					3,  //checkId
-		//					2,
-		//					&desired_roll, &actual_roll);
-		//		} else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					3, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					1,
-		//					1,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					&desired_roll, &actual_roll);
-		//		}
-
-
-
 		pid_heading.backpropagation = actual_roll - desired_roll;
 
 		float pid_roll_backpropagation_orig=pid_roll.backpropagation;
 
 		float err1=curr_roll - actual_roll;
 		float err1_orig=curr_roll - actual_roll;
-		desired_roll_rate = run_pid(&pid_roll, err1, executionId-(32*11)-(32*5));
+		desired_roll_rate = run_pid(&pid_roll, err1);
 
-		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
+		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll);
 
 		FAULTDET_trainPoint(
 				1,
@@ -752,38 +962,13 @@ void latnav_train(int roundId, int executionId) {
 				/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
 
 
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					4,  //checkId
-		//					3,
-		//					&actual_roll_rate, &curr_roll, &desired_roll_rate);
-		//		} else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					4, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					0,
-		//					0,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					&actual_roll_rate, &curr_roll, &desired_roll_rate);
-		//		}
-
 		pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
 		pid_roll_backpropagation_orig=pid_roll.backpropagation;
 
 		float err2=curr_roll_rate - actual_roll_rate;
 		float err2_orig=err2;
-		desired_ailerons = run_pid(&pid_roll, err2, executionId-(32*11)-(32*5)-(32*11)-(32*2));
-		actual_ailerons = ailerons_limiter(desired_ailerons, executionId-(32*11)-(32*5)-(32*11)-(32*2)-(32*11));
+		desired_ailerons = run_pid(&pid_roll, err2);
+		actual_ailerons = ailerons_limiter(desired_ailerons);
 
 		FAULTDET_trainPoint(
 				1,
@@ -792,31 +977,6 @@ void latnav_train(int roundId, int executionId) {
 				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
 				/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
 
-
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					5,  //checkId
-		//					2,
-		//					&desired_ailerons, &actual_ailerons);
-		//		} else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					5, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					1,
-		//					1,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					&desired_ailerons, &actual_ailerons);
-		//		}
 
 		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
@@ -831,45 +991,21 @@ void latnav_train(int roundId, int executionId) {
 
 
 		/* Just a random plane model*/
-		//		FAULTDET_testing_injectFault32(curr_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)-1, injectingErrors);
-		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)-1,  injectingErrors);
-		//		FAULTDET_testing_injectFault32(desired_ailerons, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)+(32)-1,  injectingErrors);
 
-		//				curr_heading += curr_roll/10 * TIME_STEP;
-		//				curr_roll += curr_roll_rate * TIME_STEP;
-		//				curr_roll_rate += desired_ailerons / 5;
-
-
-		//		FAULTDET_testing_injectFault32(curr_heading, executionId, 1408, 1408+32-1, injectingErrors);
-		//		FAULTDET_testing_injectFault32(curr_roll, executionId, 1408+32, 1408+32+32-1,  injectingErrors);
-		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, 1408+32+32, 1408+32+32+32-1 /*1503*/,  injectingErrors);
+		curr_heading += curr_roll/10 * TIME_STEP;
+		curr_roll += curr_roll_rate * TIME_STEP;
+		curr_roll_rate += desired_ailerons / 5;
 
 	}
 	perf_stop_clock();
 	//	clk_count_train_total+=get_clock_L();
 	//	clk_count_train_total_times++;
-	if (get_clock_U()!=0)
-		printf("err up not 0");
+	//	if (get_clock_U()!=0)
+	//		printf("err up not 0");
 
-#ifdef testingCampaign
-	if (executionId>=-1) {
-		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
-	}
-
-	if (executionId==-1) {
-
-		injectingErrors=0xFF;
-	}
-
-#endif
 }
 
-//#ifndef FAULTDETECTOR_EXECINSW
-//
-//FAULTDET_ExecutionDescriptor inst;
-//#endif
-
-void latnav_test(int roundId, int executionId) {
+void latnav_test() {
 
 #ifndef FAULTDETECTOR_EXECINSW
 	//	FAULTDET_initFaultDetection(&inst);
@@ -919,8 +1055,8 @@ void latnav_test(int roundId, int executionId) {
 		float pid_heading_backpropagation_orig=pid_heading.backpropagation;
 		float err_orig=err;
 
-		desired_roll = run_pid(&pid_heading, err, executionId);
-		actual_roll = roll_limiter(desired_roll, 400, executionId-(32*11));
+		desired_roll = run_pid(&pid_heading, err);
+		actual_roll = roll_limiter(desired_roll, 400);
 
 #ifndef FAULTDETECTOR_EXECINSW
 		FAULTDET_blockIfFaultDetectedInTask(&contr);
@@ -958,9 +1094,9 @@ void latnav_test(int roundId, int executionId) {
 
 		float err1=curr_roll - actual_roll;
 		float err1_orig=curr_roll - actual_roll;
-		desired_roll_rate = run_pid(&pid_roll, err1, executionId-(32*11)-(32*5));
+		desired_roll_rate = run_pid(&pid_roll, err1);
 
-		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
+		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll;
 
 
 		//#ifndef FAULTDETECTOR_EXECINSW
@@ -991,8 +1127,8 @@ void latnav_test(int roundId, int executionId) {
 
 		float err2=curr_roll_rate - actual_roll_rate;
 		float err2_orig=err2;
-		desired_ailerons = run_pid(&pid_roll, err2, executionId-(32*11)-(32*5)-(32*11)-(32*2));
-		actual_ailerons = ailerons_limiter(desired_ailerons, executionId-(32*11)-(32*5)-(32*11)-(32*2)-(32*11));
+		desired_ailerons = run_pid(&pid_roll, err2);
+		actual_ailerons = ailerons_limiter(desired_ailerons);
 
 
 		//#ifndef FAULTDETECTOR_EXECINSW
@@ -1051,43 +1187,27 @@ void latnav_test(int roundId, int executionId) {
 
 
 		/* Just a random plane model*/
-		//		FAULTDET_testing_injectFault32(curr_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)-1, injectingErrors);
-		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)-1,  injectingErrors);
-		//		FAULTDET_testing_injectFault32(desired_ailerons, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)+(32)-1,  injectingErrors);
 
-		//				curr_heading += curr_roll/10 * TIME_STEP;
-		//				curr_roll += curr_roll_rate * TIME_STEP;
-		//				curr_roll_rate += desired_ailerons / 5;
-
-
-		//		FAULTDET_testing_injectFault32(curr_heading, executionId, 1408, 1408+32-1, injectingErrors);
-		//		FAULTDET_testing_injectFault32(curr_roll, executionId, 1408+32, 1408+32+32-1,  injectingErrors);
-		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, 1408+32+32, 1408+32+32+32-1 /*1503*/,  injectingErrors);
-
+		curr_heading += curr_roll/10 * TIME_STEP;
+		curr_roll += curr_roll_rate * TIME_STEP;
+		curr_roll_rate += desired_ailerons / 5;
 	}
 	perf_stop_clock();
 	printf("%u\n", get_clock_L());
 	if (get_clock_U()!=0)
 		printf("err up not 0");
-
-#ifdef testingCampaign
-	if (executionId>=-1) {
-		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
-	}
-
-	if (executionId==-1) {
-
-		injectingErrors=0xFF;
-	}
-
-#endif
 }
-
+#endif
 
 
 #ifdef imgscalingBench
 //SOURCED FROM ABSURD BENCHMARK SUITE BY HEAPLAB - POLIMI
 #define SCALING_FACTOR 2
+
+#define IMG_HEIGHT 16
+#define IMG_WIDTH 16
+static unsigned char mat_in[IMG_HEIGHT][IMG_WIDTH];
+unsigned char mat_out[IMG_HEIGHT][IMG_WIDTH];
 
 static float hermit_poly(float p_0, float p_1, float p_2, float p_3, float x){
 	float a,b,c,d;
@@ -1519,7 +1639,6 @@ void imgScaling(int executionId) {
 }
 #endif
 
-#endif
 
 #include "perf_timer.h"
 
@@ -1530,59 +1649,29 @@ static void prvTaskFour( void *pvParameters )
 
 	for (int i=0; i<100000; i++) {}
 
-	//	inst.lastTest.checkId = 0;
-	//	inst.lastTest.executionId=0;
-	//	inst.lastTest.uniId= 0;
-	//	inst.testedOnce=0x0;
-
 	random_set_seed(1);
-	//	float a;
-	//	float b;
-	//	float c;
-	//
-	//	for (int i=0; i<50000; i++) {
-	//
-	//		a=random_get();
-	//		b=random_get();
-	//		c=random_get();
-	//
-	//		FAULTDET_trainPoint(
-	//				1,
-	//				0,  //checkId
-	//				3,
-	//				&a, &b, &c);
-	//	}
-	//
-	//	for (int i=0; i<10000; i++) {
-	//		a=random_get();
-	//		b=random_get();
-	//		c=random_get();
-	//
-	//		FAULTDET_testPoint(
-	//#ifndef FAULTDETECTOR_EXECINSW
-	//				NULL,
-	//#endif
-	//				1, //uniId
-	//				0, //checkId
-	//				0, //BLOCKING OR NON BLOCKING, non blocking
-	//#ifdef testingCampaign
-	//				injectingErrors,
-	//				1,
-	//				1,
-	//				roundId,
-	//				executionId,
-	//#endif
-	//				3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-	//				&a, &b, &c);
-	//#ifndef FAULTDETECTOR_EXECINSW
-	//		FAULTDET_resetFault();
-	//#endif
-	//	}
-	//	printf("clk train mean: %u clk test mean: %u", getMeanTrainClock(), getMeanTestClock());
 
+#ifdef ANNBench
+
+	init_train_data();
+	train_ann_routine();
+
+//	init_test_data();
+//	forward_pass_test_burst(-2);
+
+	for (int i=-15000; i<-1; i++) {
+		init_test_data();
+		forward_pass_test_burst_train();
+	}
+
+	for (int i=0; i<5000; i++) {
+		init_test_data();
+		forward_pass_test_burst_test();
+	}
+#endif
 
 #ifdef FFTBench
-	for (int executionId=-1000; executionId<-1; executionId++) {
+	for (int executionId=-10000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1590,11 +1679,11 @@ static void prvTaskFour( void *pvParameters )
 
 			array_in[i]=x;
 		}
-		fft_routine_train(executionId);
+		fft_routine_train();
 
 	}
 
-	for (int i=0; i<10000; i++) {
+	for (int i=0; i<50000; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1602,7 +1691,7 @@ static void prvTaskFour( void *pvParameters )
 
 			array_in[i]=x;
 		}
-		fft_routine_test(-1);
+		fft_routine_test();
 	}
 #endif
 
@@ -1612,7 +1701,7 @@ static void prvTaskFour( void *pvParameters )
 		r2=random_get();
 		r3=random_get();
 		r4=random_get();
-		latnav_train(0, -5);
+		latnav_train();
 	}
 	contr.checkId=0;
 	contr.executionId=0;
@@ -1623,171 +1712,10 @@ static void prvTaskFour( void *pvParameters )
 		r2=random_get();
 		r3=random_get();
 		r4=random_get();
-		latnav_test(0, -1);
+		latnav_test();
 		//		injectingErrors=0x0;
 		//		FAULTDET_testing_resetGoldens();
 	}
 #endif
 	for (;;) {}
-	//	unsigned int benchtime=clk_count_bench_total/clk_count_bench_total_times;
-	//	unsigned int benchtime_train=clk_count_train_total/clk_count_train_total_times;
-	//	printf("bench time %u train %u ", benchtime, benchtime_train);
-	//	printf("\"total_pos\": %d, ", FAULTDET_testing_getTotal_golden());
-	//	printf("\"true_pos\": %d, ", FAULTDET_testing_getOk_golden());
-	//	printf("\"false_pos\": %d, ", FAULTDET_testing_getFalsePositives_golden());
 }
-
-
-
-#ifdef aaaa
-
-
-//	unsigned long long int ovh_sum=0;
-//	for (int i=0; i<10000; i++) {
-//		perf_reset_and_start_clock();
-//		perf_stop_clock();
-//		ovh_sum+=get_clock_L();
-//	}
-//	unsigned int ovh=ovh_sum/10000;
-//	printf("measure overhead %u", ovh);
-
-perf_reset_and_start_clock();
-perf_stop_clock();
-printf("measure overhead %u", get_clock_L());
-
-random_set_seed(1);
-
-//	for (int i=0; i<1000; i++) {
-//		injectingErrors=0x0;
-
-int executions=1000;
-int trainIter=1000;
-
-for (int executionId=-trainIter-1 ;executionId<-1/*960*/; executionId++) {
-	r1=random_get();
-	r2=random_get();
-	r3=random_get();
-	r4=random_get();
-	latnav(0, executionId);
-}
-
-for (int i=0; i<executions; i++) {
-	FAULTDET_testing_resetGoldens();
-	injectingErrors=0x0;
-	r1=random_get();
-	r2=random_get();
-	r3=random_get();
-	r4=random_get();
-	for (int executionId=-1 ;executionId<1312/*1503*//*960*/; executionId++) {
-		latnav(i, executionId);
-	}
-	//		}
-	//#ifdef trainMode
-	//		printf("Training done. ");
-	//		FAULTDET_dumpRegions();
-	//		while(1) {
-	//			//printf("done train");
-	//
-	//		}
-	//#endif
-	//			FAULTDET_hotUpdateRegions(trainedRegions, n_regions);
-}
-#ifdef testingCampaign
-printf("clk train mean: %u clk test mean: %u", getMeanTrainClock(), getMeanTestClock());
-printf("], ");
-printf("\"total_pos\": %d, ", FAULTDET_testing_getTotal_golden());
-printf("\"true_pos\": %d, ", FAULTDET_testing_getOk_golden());
-printf("\"false_pos\": %d, ", FAULTDET_testing_getFalsePositives_golden());
-
-printf("\"total_bitflips\":%d, ", FAULTDET_testing_getTotal());
-printf("\"true_neg\": %d, ", FAULTDET_testing_getOk());
-printf("\"false_neg\":%d, ", FAULTDET_testing_getFalseNegatives());
-//	printf("%d|", FAULTDET_testing_getOk_wtolerance());
-//	printf("%d|", FAULTDET_testing_getFalseNegatives_wtolerance());
-printf("\"no_effect_bitflips\": %d", FAULTDET_testing_getNoEffects());
-printf("}");
-#endif
-
-}
-#endif
-
-//
-//
-//	static void prvTaskFour( void *pvParameters )
-//	{
-//#ifdef testingCampaign
-//		xPortSchedulerDisableIntr(); //if uncommented, task will execute continuously
-//		for (int executionId=-1 ;executionId<96; executionId++) {
-//#else
-//			for (;;) {
-//#endif
-//#ifndef FAULTDETECTOR_EXECINSW
-//				FAULTDET_ExecutionDescriptor inst;
-//				FAULTDET_initFaultDetection(&inst);
-//#endif
-//
-//				//		FAULTDET_testing_initTesting();
-//				//FAULTDET_resetFault(); //not needed, automatically done by the faultdetector when a command from the same check but with different UniId is received
-//
-//				float v1=150.0;
-//				float v2=50.0;
-//				float v3=50.0;
-//
-//#ifdef testingCampaign
-//
-//				printf("Exec id %d", executionId);
-//
-//				if (executionId>=0) {
-//					printBits(sizeof(u32), &v1);
-//					FAULTDET_testing_injectFault32(v1, executionId, 0, 31, injectingErrors);
-//					printBits(sizeof(u32), &v1);
-//
-//					printBits(sizeof(u32), &v2);
-//					FAULTDET_testing_injectFault32(v2, executionId, 32, 63, injectingErrors);
-//					printBits(sizeof(u32), &v2);
-//
-//					printBits(sizeof(u32), &v3);
-//					FAULTDET_testing_injectFault32(v3, executionId, 64, 95, injectingErrors);
-//					printBits(sizeof(u32), &v3);
-//				}
-//#endif
-//
-//				FAULTDET_testPoint(
-//#ifndef FAULTDETECTOR_EXECINSW
-//						&inst,
-//#endif
-//						1, //uniId
-//						0, //checkId
-//						0, //BLOCKING OR NON BLOCKING, non blocking
-//#ifdef testingCampaign
-//						injectingErrors,
-//#endif
-//						8, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-//						&v1, &v2, &v3, &v3, &v3, &v3, &v3, &v3);
-//
-//				/*we want to commit what we processed. Check no fault has happened.
-//			As soon as a fault is detected by fault detector and the condition allows it,
-//			task is killed and reexecuted, so we just have to wait here.
-//			Most likely, if a fault is detected, we won't reach this point,
-//			the task will be re executed earlier.*/
-//				//		FAULTDET_blockIfFaultDetectedInTask(&inst);
-//
-//#ifdef testingCampaign
-//				printf(" total: %d ", FAULTDET_testing_getTotal());
-//				printf(" ok: %d ", FAULTDET_testing_getOk());
-//				printf(" fp: %d ", FAULTDET_testing_getFalsePositives());
-//				printf(" fn: %d ", FAULTDET_testing_getFalseNegatives());
-//
-//				//after the first execution (generating goldens), inject faults
-//				injectingErrors=0xFF;
-//#endif
-//
-//				//commit changes
-//				//writeOutput(...)
-//
-//				//signal to the scheduler the end of the job
-//#ifndef testingCampaign
-//				vTaskJobEnd();
-//#endif
-//			}
-//		}
