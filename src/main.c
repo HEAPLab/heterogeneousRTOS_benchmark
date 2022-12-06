@@ -31,9 +31,6 @@
 
 #include "simple_random.h"
 
-//#ifdef imgscalingBench
-//#include "scaling_image.h"
-//#endif
 /*-----------------------------------------------------------*/
 
 #include <math.h>
