@@ -77,7 +77,7 @@ void FAULTDET_blockIfFaultDetectedInTask (FAULTDET_ExecutionDescriptor* instance
 }
 #endif
 
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 #ifndef FAULTDETECTOR_EXECINSW
 
 void FAULTDET_testing_blockUntilProcessed (FAULTDET_ExecutionDescriptor* instance) {
@@ -317,12 +317,11 @@ void FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
 		FAULTDET_ExecutionDescriptor* instance,
 #endif
-		int uniId, int checkId, char blocking,
-#ifdef testingCampaign
+		int uniId, int checkId,
+#ifdef detectionPerformanceMeasurement
 		u8 injectingErrors,
 		int goldenLobound,
 		int goldenUpbound,
-		int roundId,
 		int testingExecutionId,
 #endif
 		int argCount, ...) {
@@ -333,14 +332,14 @@ void FAULTDET_testPoint(
 		return; //error
 
 	FAULTDETECTOR_controlStr contr;
-#ifndef testingCampaign
+#ifndef detectionPerformanceMeasurement
 	TCB_t* tcbPtr=*pxCurrentTCB_ptr;
 #endif
 
 
 	contr.uniId=uniId;
 	contr.checkId=checkId;
-#ifndef testingCampaign
+#ifndef detectionPerformanceMeasurement
 	contr.taskId=tcbPtr->uxTaskNumber-1;
 	contr.executionId=tcbPtr->executionId;
 #else
@@ -355,7 +354,7 @@ void FAULTDET_testPoint(
 		contr.AOV[i]=0.0;
 	}
 
-#ifndef testingCampaign
+#ifndef detectionPerformanceMeasurement
 	u16 lastErrorUniId=tcbPtr->lastError.uniId;
 	u8 lastErrorCheckId=tcbPtr->lastError.checkId;
 
@@ -385,7 +384,7 @@ void FAULTDET_testPoint(
 #ifdef FAULTDETECTOR_EXECINSW
 		char fault=FAULTDETECTOR_SW_test(&contr);
 		//		printf(" SW FAULT DETECTOR: fault %x", fault);
-#ifndef testingCampaign
+#ifndef detectionPerformanceMeasurement
 
 		if (fault) {
 			tcbPtr->lastError.uniId=contr.uniId;
@@ -394,16 +393,16 @@ void FAULTDET_testPoint(
 			memcpy(&(tcbPtr->lastError.AOV), &(contr.AOV), sizeof(contr.AOV));
 		}
 #endif
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 
 		if (injectingErrors==0) {
 			if (FAULTDET_testing_goldenResults_size<GOLDEN_RESULT_SIZE) {
 				if (fault) {
 					FAULTDET_testing_temp_faultdetected=0xFF;
 #ifdef csvOut
-					printf("%d.%d.%d.%d.1.0.0.0;",roundId, testingExecutionId, checkId, uniId);
+					printf("%d.%d.%d.1.0.0.0;", testingExecutionId, checkId, uniId);
 				} else {
-					printf("%d.%d.%d.%d.0.0.0.0;",roundId, testingExecutionId, checkId, uniId);
+					printf("%d.%d.%d.0.0.0.0;", testingExecutionId, checkId, uniId);
 #endif
 				}
 
@@ -431,21 +430,21 @@ void FAULTDET_testPoint(
 					//				FAULTDETECTOR_resetFault(&FAULTDETECTOR_InstancePtr, contr.taskId);
 					FAULTDET_testing_temp_faultdetected=fault;
 #ifdef csvOut
-					printf("%d.%d.%d.%d.1.",roundId, testingExecutionId, checkId, uniId);
+					printf("%d.%d.%d.1.", testingExecutionId, checkId, uniId);
 				} else {
-					printf("%d.%d.%d.%d.0.",roundId, testingExecutionId, checkId, uniId);
+					printf("%d.%d.%d.0.", testingExecutionId, checkId, uniId);
 #endif
 				}
 			}
-#ifndef testingCampaign
+#ifndef detectionPerformanceMeasurement
 		}
 #endif
 
-#else //!testingCampaign
+#else //!detectionPerformanceMeasurement
 		SCHEDULER_restartFaultyJob((void*) SCHEDULER_BASEADDR, tcbPtr->uxTaskNumber, contr.executionId);
 		while(1) {}
 	}
-#endif //testingCampaign
+#endif //detectionPerformanceMeasurement
 
 #else //!FAULTDETECTOR_EXECINSW
 	FAULTDET_Test(&contr);
@@ -454,7 +453,7 @@ void FAULTDET_testPoint(
 	instance->lastTest.executionId=tcbPtr->executionId;
 	instance->lastTest.uniId=uniId;
 
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 
 	if (injectingErrors==0) {
 		if (FAULTDET_testing_goldenResults_size<GOLDEN_RESULT_SIZE) {
@@ -463,9 +462,9 @@ void FAULTDET_testPoint(
 				FAULTDETECTOR_resetFault(&FAULTDETECTOR_InstancePtr, contr.taskId);
 				FAULTDET_testing_temp_faultdetected=0xFF;
 #ifdef csvOut
-				printf("%d.%d.%d.%d.1.0.0.0;",roundId, testingExecutionId, checkId, uniId);
+				printf("%d.%d.%d.1.0.0.0;",testingExecutionId, checkId, uniId);
 			} else {
-				printf("%d.%d.%d.%d.0.0.0.0;",roundId, testingExecutionId, checkId, uniId);
+				printf("%d.%d.%d.0.0.0.0;",testingExecutionId, checkId, uniId);
 #endif
 			}
 
@@ -487,11 +486,11 @@ void FAULTDET_testPoint(
 				FAULTDET_testing_temp_faultdetected=0xFF;
 				//				FAULTDETECTOR_resetFault(&FAULTDETECTOR_InstancePtr, contr.taskId);
 #ifdef csvOut
-				printf("%d.%d.%d.%d.1.",roundId, testingExecutionId, checkId, uniId);
+				printf("%d.%d.%d.1.", testingExecutionId, checkId, uniId);
 
 
 			} else {
-				printf("%d.%d.%d.%d.0.",roundId, testingExecutionId, checkId, uniId);
+				printf("%d.%d.%d.0.", testingExecutionId, checkId, uniId);
 #endif
 			}
 		}
@@ -500,12 +499,7 @@ void FAULTDET_testPoint(
 		//		FAULTDET_testing_temp_changed = FAULTDET_testing_temp_changed || FAULTDET_testing_isAovEqual(&curr, golden, goldenLobound, goldenUpbound)==0;
 		//		FAULTDET_testing_temp_faultdetected=FAULTDET_testing_temp_faultdetected || fault;
 	}
-
-#else //!testingCampaign
-	if (blocking) {
-		FAULTDET_blockIfFaultDetectedInTask(instance);
-	}
-#endif //testingCampaign
+#endif //detectionPerformanceMeasurement
 #endif //FAULTDETECTOR_EXECINSW
 }
 
@@ -520,13 +514,13 @@ void FAULTDET_trainPoint(int uniId, int checkId, int argCount, ...) {
 
 	FAULTDETECTOR_controlStr contr;
 
-#ifndef testingCampaign
+#ifndef detectionPerformanceMeasurement
 	TCB_t* tcbPtr=*pxCurrentTCB_ptr;
 #endif
 
 	contr.uniId=uniId;
 	contr.checkId=checkId;
-#ifndef testingCampaign
+#ifndef detectionPerformanceMeasurement
 	contr.taskId=tcbPtr->uxTaskNumber-1;
 	contr.executionId=tcbPtr->executionId;
 #else

@@ -1,16 +1,8 @@
-/*
- ============================================================================
- Name        : faultdetector_benchmark.c
- Author      : 
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
-//#define latnavBench
-#define ANNBench
+#define latnavBench
+//#define FFTBench
+//#define ANNBench
 #define FAULTDETECTOR_EXECINSW
-#define testingCampaign
+#define detectionPerformanceMeasurement
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,10 +12,8 @@
 #include <string.h>
 
 u8 injectingErrors=0;
-float r1, r2, r3, r4;
 
 #ifdef ANNBench
-
 
 #include "simple_random.h"
 
@@ -245,8 +235,7 @@ static void forward_pass_test_burst(int executionId){
 #endif
 					b, //uniId
 					0, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 					injectingErrors,
 					4,
 					4,
@@ -337,12 +326,6 @@ static void train_ann_routine(){
 
 	}
 }
-
-
-
-
-
-
 #endif
 
 #ifdef FFTBench
@@ -373,17 +356,17 @@ static complex array_out[FFT_LENGTH];
 
 //192
 static complex complex_sum(complex a, complex b, int executionId){
-	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, injectingErrors);
+	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, injectingErrors);
+	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, injectingErrors);
+	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, injectingErrors);
 
 	complex res;
 	res.re=a.re + b.re;
 	res.im=a.im + b.im;
 
-	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, injectingErrors);
+	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, injectingErrors);
 
 	return res;
 }
@@ -397,17 +380,17 @@ static complex complex_sum(complex a, complex b, int executionId){
 
 //192
 static complex complex_mult(complex a, complex b, int executionId){
-	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, (32*1)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, (32*2)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, (32*3)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, (32*4)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(a.re, executionId, 32*0, injectingErrors);
+	FAULTDET_testing_injectFault32(a.im, executionId, 32*1, injectingErrors);
+	FAULTDET_testing_injectFault32(b.re, executionId, 32*2, injectingErrors);
+	FAULTDET_testing_injectFault32(b.im, executionId, 32*3, injectingErrors);
 
 	complex res;
 	res.re=(a.re * b.re) - (a.im*b.im);
 	res.im=(a.im*b.re) + (a.re*b.im);
 
-	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, (32*5)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, (32*6)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(res.re, executionId, 32*4, injectingErrors);
+	FAULTDET_testing_injectFault32(res.im, executionId, 32*5, injectingErrors);
 
 	return res;
 }
@@ -421,14 +404,14 @@ static complex complex_mult(complex a, complex b, int executionId){
 //96
 static complex complex_exp(float x, int executionId){
 	/* e^(i*x)=cos(x) + i*sin(x)*/
-	FAULTDET_testing_injectFault32(x, executionId, 32*0, (32*1)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(x, executionId, 32*0, injectingErrors);
 
 	complex res;
 	res.re=cos(x);
 	res.im=sin(x);
 
-	FAULTDET_testing_injectFault32(res.re, executionId, 32*1, (32*2)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(res.im, executionId, 32*2, (32*3)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(res.re, executionId, 32*1, injectingErrors);
+	FAULTDET_testing_injectFault32(res.im, executionId, 32*2, injectingErrors);
 
 	return res;
 }
@@ -439,15 +422,19 @@ static complex complex_exp(float x, int executionId){
  * @return Fourier transform for input array
  */
 
-//LOOP1TOTAL=64+LOOP2TOTAL+
-//LOOP2TOTAL=192+
+
 #define LOOP2TOTAL (192*2+96)
 #define LOOP3TOTAL (LOOP2TOTAL)
-#define LOOP1TOTAL (32*4+FFT_LENGTH*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL)
+#define LOOP1TOTAL (32*4+((int)((FFT_LENGTH-1)/2))*LOOP3TOTAL+((int)(FFT_LENGTH/2))*LOOP2TOTAL)
 static void fft_routine(int executionId){
 	int k;
 
-	for(k=0;k<FFT_LENGTH;k++){
+	if (executionId>=0)
+		injectingErrors=0xFF;
+	else
+		injectingErrors=0x0;
+
+	for(k=0;k<FFT_LENGTH;k++){ //LOOP1TOTAL
 
 
 		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
@@ -457,14 +444,14 @@ static void fft_routine(int executionId){
 		even_sum.re=0;
 		even_sum.im=0;
 
-		for(n=0;n<FFT_LENGTH;n=n+2){
-			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (32*2+n*LOOP2TOTAL+k*LOOP1TOTAL)); //96
-			complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (32*2+96+n*LOOP2TOTAL+k*LOOP1TOTAL)); //192
+		for(n=0;n<FFT_LENGTH;n=n+2){ //LOOP2TOTAL
+			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)(n/2))*LOOP2TOTAL+k*LOOP1TOTAL)); //96
+			complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)(n/2))*LOOP2TOTAL+k*LOOP1TOTAL)); //192
 
-			complex_sum(even_sum,n_term,  executionId - (32*2+96+192+n*LOOP2TOTAL+k*LOOP1TOTAL)); //192
+			complex_sum(even_sum,n_term,  executionId - (96+192+((int)(n/2))*LOOP2TOTAL+k*LOOP1TOTAL)); //192
 		}
-		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+k*LOOP1TOTAL, (32*1)-1+k*LOOP1TOTAL, injectingErrors);
-		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+k*LOOP1TOTAL, (32*2)-1+k*LOOP1TOTAL, injectingErrors);
+		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL, injectingErrors);
+		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL, injectingErrors);
 
 		float v1=array_in[0].re+array_in[2].re;
 		float v2=array_in[4].re+array_in[6].re;
@@ -484,8 +471,7 @@ static void fft_routine(int executionId){
 #endif
 					1, //uniId
 					k, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 					injectingErrors,
 					4,
 					5,
@@ -500,16 +486,15 @@ static void fft_routine(int executionId){
 		odd_sum.re=0;
 		odd_sum.im=0;
 
-		for(n=1;n<FFT_LENGTH;n=n+2){
-			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (32*4+n*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL) ); //96
-			complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (32*4+96+n*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL) ); //192
+		for(n=1;n<FFT_LENGTH;n=n+2){ //LOOP3TOTAL
+			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL) ); //96
+			complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL) ); //192
 
-			complex_sum(odd_sum,n_term,  executionId - (32*4+96+192+n*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL)); //192
+			complex_sum(odd_sum,n_term,  executionId - (192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL)); //192
 		}
 
-		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL), (32*3-1+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL), injectingErrors);
-		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL), (32*4-1+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL), injectingErrors);
-
+		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (((int)((FFT_LENGTH-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL), injectingErrors);
+		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (((int)((FFT_LENGTH-1)/2))*LOOP3TOTAL+32*3+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL), injectingErrors);
 
 		v1=array_in[1].re+array_in[3].re;
 		v2=array_in[5].re+array_in[7].re;
@@ -529,8 +514,7 @@ static void fft_routine(int executionId){
 #endif
 					1, //uniId
 					k, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 					injectingErrors,
 					4,
 					5,
@@ -541,21 +525,13 @@ static void fft_routine(int executionId){
 					&(v1), &(v2), &(v3), &(v4), &(odd_sum.re),  &(odd_sum.im));
 		}
 
-		complex out=complex_sum(even_sum,odd_sum, -10/*executionId - (32*4+FFT_LENGTH*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL)*/);
+		complex out=complex_sum(even_sum,odd_sum, -10);
 
-
-		array_out[k] = out; //192
+		array_out[k] = out;
 	}
-#ifdef testingCampaign
 	if (executionId>=-1) {
 		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
 	}
-
-	if (executionId==-1) {
-
-		injectingErrors=0xFF;
-	}
-#endif
 }
 
 #endif
@@ -586,29 +562,29 @@ typedef struct pid_controller_s {
 float run_pid(pid_controller_t* pid, float error, int executionId) {
 	float output;
 
-	FAULTDET_testing_injectFault32(pid->p, executionId, 32*0, (32*1)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->i, executionId, 32*1, (32*2)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->d, executionId, 32*2, (32*3)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->b, executionId, 32*3, (32*4)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->prev_error, executionId, 32*4, (32*5)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->integral_sum, executionId, 32*5, (32*6)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(pid->backpropagation, executionId, 32*6, (32*7)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(pid->p, executionId, 32*0, injectingErrors);
+	FAULTDET_testing_injectFault32(pid->i, executionId, 32*1, injectingErrors);
+	FAULTDET_testing_injectFault32(pid->d, executionId, 32*2, injectingErrors);
+	FAULTDET_testing_injectFault32(pid->b, executionId, 32*3, injectingErrors);
+	FAULTDET_testing_injectFault32(pid->prev_error, executionId, 32*4, injectingErrors);
+	FAULTDET_testing_injectFault32(pid->integral_sum, executionId, 32*5, injectingErrors);
+	FAULTDET_testing_injectFault32(pid->backpropagation, executionId, 32*6, injectingErrors);
 
 	output = error * pid->p;
 
-	FAULTDET_testing_injectFault32(output, executionId, 32*7, (32*8)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(output, executionId, 32*7, injectingErrors);
 
 	pid->integral_sum += ((error * pid->i) + (pid->b * pid->backpropagation)) * TIME_STEP;
 
-	FAULTDET_testing_injectFault32(pid->integral_sum, executionId, 32*8, (32*9)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(pid->integral_sum, executionId, 32*8, injectingErrors);
 
 	output += pid->integral_sum;
 
-	FAULTDET_testing_injectFault32(output, executionId, 32*9, (32*10)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(output, executionId, 32*9, injectingErrors);
 
 	output += pid->d * (error - pid->prev_error) / TIME_STEP;
 
-	FAULTDET_testing_injectFault32(output, executionId, 32*10, (32*11)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(output, executionId, 32*10, injectingErrors);
 
 	pid->prev_error = error;
 
@@ -618,8 +594,8 @@ float run_pid(pid_controller_t* pid, float error, int executionId) {
 float roll_limiter(float desired_roll, float speed, int executionId) {
 	float limit_perc,limit;
 
-	FAULTDET_testing_injectFault32(speed, executionId, 32*0, (32*1)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(desired_roll, executionId, 32*4, (32*5)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(speed, executionId, 32*0, injectingErrors);
+	FAULTDET_testing_injectFault32(desired_roll, executionId, 32*1, injectingErrors);
 
 	if (speed <= 140) {
 		return CLAMP(desired_roll, -30, 30);
@@ -628,22 +604,22 @@ float roll_limiter(float desired_roll, float speed, int executionId) {
 		return CLAMP(desired_roll, -40, 40);
 	}
 
-	FAULTDET_testing_injectFault32(speed, executionId, 32*1, (32*2)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(speed, executionId, 32*2, injectingErrors);
 
 	limit_perc = (speed < 220) ? (speed-140) / 80 : ((speed-220) / 80);
 
-	FAULTDET_testing_injectFault32(limit_perc, executionId, 32*2, (32*3)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(limit_perc, executionId, 32*3, injectingErrors);
 
 	limit = (speed < 220) ? (30 + limit_perc * 37) : (40 + (1-limit_perc) * 27);
 
-	FAULTDET_testing_injectFault32(limit, executionId, 32*3, (32*4)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(limit, executionId, 32*4, injectingErrors);
 
 	return CLAMP (desired_roll, -limit, limit);
 }
 
 float roll_rate_limiter(float desired_roll_rate, float roll, int executionId) {
-	FAULTDET_testing_injectFault32(roll, executionId, 32*0, (32*1)-1, injectingErrors);
-	FAULTDET_testing_injectFault32(desired_roll_rate, executionId, 32*1, (32*2)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(roll, executionId, 32*0, injectingErrors);
+	FAULTDET_testing_injectFault32(desired_roll_rate, executionId, 32*1, injectingErrors);
 
 
 	if (roll < 20 && roll > -20) {
@@ -656,19 +632,24 @@ float roll_rate_limiter(float desired_roll_rate, float roll, int executionId) {
 }
 
 float ailerons_limiter(float aileron, int executionId) {
-	FAULTDET_testing_injectFault32(aileron, executionId, 32*0, (32*1)-1, injectingErrors);
+	FAULTDET_testing_injectFault32(aileron, executionId, 32*0, injectingErrors);
 
 	return CLAMP(aileron, -30, 30);
 }
 
 float r1, r2, r3, r4;
 
-void latnav(int roundId, int executionId) {
+void latnav(int executionId) {
 
 #ifndef FAULTDETECTOR_EXECINSW
 	FAULTDET_ExecutionDescriptor inst;
 	FAULTDET_initFaultDetection(&inst);
 #endif
+
+	if (executionId>=0)
+		injectingErrors=0xFF;
+	else
+		injectingErrors=0x0;
 
 	pid_controller_t pid_roll_rate,pid_roll,pid_heading;
 	float curr_heading,curr_roll,curr_roll_rate;
@@ -701,289 +682,166 @@ void latnav(int roundId, int executionId) {
 	curr_roll_rate = r3;
 
 
+	//	for(i=0; i<1; i++) {
 
+	float desired_roll,actual_roll,desired_roll_rate,actual_roll_rate,desired_ailerons,actual_ailerons;
 
-	for(i=0; i<1; i++) {
+	float err=curr_heading-r4;
+	float pid_heading_backpropagation_orig=pid_heading.backpropagation;
+	float err_orig=err;
 
-		float desired_roll,actual_roll,desired_roll_rate,actual_roll_rate,desired_ailerons,actual_ailerons;
-
-		float err=curr_heading-r4;
-		float pid_heading_backpropagation_orig=pid_heading.backpropagation;
-		float err_orig=err;
-
-		desired_roll = run_pid(&pid_heading, err, executionId);
-		actual_roll = roll_limiter(desired_roll, 400, executionId-(32*11));
+	desired_roll = run_pid(&pid_heading, err, executionId);
+	actual_roll = roll_limiter(desired_roll, 400, executionId-(32*11));
 
 #ifndef FAULTDETECTOR_EXECINSW
-		FAULTDET_blockIfFaultDetectedInTask(&inst);
+	FAULTDET_blockIfFaultDetectedInTask(&inst);
 #endif
 
 
-		if (executionId<-1) {
-			FAULTDET_trainPoint(
-					1,
-					0,  //checkId
-					4,
-					//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-					/*&(pid_heading.b),*/ &(pid_heading.backpropagation), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err, &desired_roll, &actual_roll);//, &actual_roll);
+	if (executionId<-1) {
+		FAULTDET_trainPoint(
+				1,
+				0,  //checkId
+				4,
+				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
 
-		} else {
-			FAULTDET_testPoint(
+	} else {
+		FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
-					&inst,
+				&inst,
 #endif
-					1, //uniId
-					0, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-					injectingErrors,
-					3,
-					3,
-					roundId,
-					executionId,
+				1, //uniId
+				0, //checkId
+#ifdef detectionPerformanceMeasurement
+				injectingErrors,
+				-1,
+				-1,
+				executionId,
 #endif
-					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-					/*&(pid_heading.b),*/ &(pid_heading.backpropagation), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err, &desired_roll, &actual_roll);//, &actual_roll);
-		}
-
-
-
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					3,  //checkId
-		//					2,
-		//					&desired_roll, &actual_roll);
-		//		} else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					3, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					1,
-		//					1,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					&desired_roll, &actual_roll);
-		//		}
-
-
-
-		pid_heading.backpropagation = actual_roll - desired_roll;
-
-		float pid_roll_backpropagation_orig=pid_roll.backpropagation;
-
-		float err1=curr_roll - actual_roll;
-		float err1_orig=curr_roll - actual_roll;
-		desired_roll_rate = run_pid(&pid_roll, err1, executionId-(32*11)-(32*5));
-
-		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
-
-		if (executionId<-1) {
-			FAULTDET_trainPoint(
-					1,
-					1,  //ceckId
-					5,
-					//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
-
-		} else {
-			FAULTDET_testPoint(
-#ifndef FAULTDETECTOR_EXECINSW
-					&inst,
-#endif
-					1, //uniId
-					1, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-					injectingErrors,
-					3,
-					3,
-					roundId,
-					executionId,
-#endif
-					5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
-		}
-
-
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					4,  //checkId
-		//					3,
-		//					&actual_roll_rate, &curr_roll, &desired_roll_rate);
-		//		} else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					4, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					0,
-		//					0,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					3, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					&actual_roll_rate, &curr_roll, &desired_roll_rate);
-		//		}
-
-		pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
-		pid_roll_backpropagation_orig=pid_roll.backpropagation;
-
-		float err2=curr_roll_rate - actual_roll_rate;
-		float err2_orig=err2;
-		desired_ailerons = run_pid(&pid_roll, err2, executionId-(32*11)-(32*5)-(32*11)-(32*2));
-		actual_ailerons = ailerons_limiter(desired_ailerons, executionId-(32*11)-(32*5)-(32*11)-(32*2)-(32*11));
-
-		if (executionId<-1) {
-			FAULTDET_trainPoint(
-					1,
-					2,  //checkId
-					4,
-					//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
-
-		} else {
-			FAULTDET_testPoint(
-#ifndef FAULTDETECTOR_EXECINSW
-					&inst,
-#endif
-					1, //uniId
-					2, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-					injectingErrors,
-					3,
-					3,
-					roundId,
-					executionId,
-#endif
-					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-					/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
-		}
-
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					5,  //checkId
-		//					2,
-		//					&desired_ailerons, &actual_ailerons);
-		//		} else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					5, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					1,
-		//					1,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					2, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					&desired_ailerons, &actual_ailerons);
-		//		}
-
-		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
-
-
-		if (executionId<-1) {
-			FAULTDET_trainPoint(
-					1,
-					3,  //checkId
-					4,
-					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons);
-		}  else {
-			FAULTDET_testPoint(
-#ifndef FAULTDETECTOR_EXECINSW
-					&inst,
-#endif
-					1, //uniId
-					3, //checkId
-					0, //BLOCKING OR NON BLOCKING, non blocking
-#ifdef testingCampaign
-					injectingErrors,
-					3,
-					3,
-					roundId,
-					executionId,
-#endif
-					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &desired_ailerons);
-		}
-
-		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
-
-
-		//		if (executionId<-1) {
-		//			FAULTDET_trainPoint(
-		//					1,
-		//					6,  //checkId
-		//					4,
-		//					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
-		//		}  else {
-		//			FAULTDET_testPoint(
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//					&inst,
-		//#endif
-		//					1, //uniId
-		//					6, //checkId
-		//					0, //BLOCKING OR NON BLOCKING, non blocking
-		//#ifdef testingCampaign
-		//					injectingErrors,
-		//					3,
-		//					3,
-		//					roundId,
-		//					executionId,
-		//#endif
-		//					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-		//					/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
-		//		}
-
-		/* Just a random plane model*/
-		//		FAULTDET_testing_injectFault32(curr_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)-1, injectingErrors);
-		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)-1,  injectingErrors);
-		//		FAULTDET_testing_injectFault32(desired_ailerons, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)+(32)-1,  injectingErrors);
-
-		//				curr_heading += curr_roll/10 * TIME_STEP;
-		//				curr_roll += curr_roll_rate * TIME_STEP;
-		//				curr_roll_rate += desired_ailerons / 5;
-
-
-		//		FAULTDET_testing_injectFault32(curr_heading, executionId, 1408, 1408+32-1, injectingErrors);
-		//		FAULTDET_testing_injectFault32(curr_roll, executionId, 1408+32, 1408+32+32-1,  injectingErrors);
-		//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, 1408+32+32, 1408+32+32+32-1 /*1503*/,  injectingErrors);
-
+				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
 	}
 
-#ifdef testingCampaign
+	pid_heading.backpropagation = actual_roll - desired_roll;
+
+	float pid_roll_backpropagation_orig=pid_roll.backpropagation;
+
+	float err1=curr_roll - actual_roll;
+	float err1_orig=curr_roll - actual_roll;
+	desired_roll_rate = run_pid(&pid_roll, err1, executionId-(32*11)-(32*5));
+
+	actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
+
+	if (executionId<-1) {
+		FAULTDET_trainPoint(
+				1,
+				1,  //ceckId
+				5,
+				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
+				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
+
+	} else {
+		FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+				&inst,
+#endif
+				1, //uniId
+				1, //checkId
+#ifdef detectionPerformanceMeasurement
+				injectingErrors,
+				-1,
+				-1,
+				executionId,
+#endif
+				5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
+				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
+	}
+
+	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
+	pid_roll_backpropagation_orig=pid_roll.backpropagation;
+
+	float err2=curr_roll_rate - actual_roll_rate;
+	float err2_orig=err2;
+	desired_ailerons = run_pid(&pid_roll, err2, executionId-(32*11)-(32*5)-(32*11)-(32*2));
+	actual_ailerons = ailerons_limiter(desired_ailerons, executionId-(32*11)-(32*5)-(32*11)-(32*2)-(32*11));
+
+	if (executionId<-1) {
+		FAULTDET_trainPoint(
+				1,
+				2,  //checkId
+				4,
+				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
+				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
+
+	} else {
+		FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+				&inst,
+#endif
+				1, //uniId
+				2, //checkId
+#ifdef detectionPerformanceMeasurement
+				injectingErrors,
+				-1,
+				-1,
+				executionId,
+#endif
+				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
+				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
+	}
+
+	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
+
+
+	if (executionId<-1) {
+		FAULTDET_trainPoint(
+				1,
+				3,  //checkId
+				4,
+				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
+	}  else {
+		FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+				&inst,
+#endif
+				1, //uniId
+				3, //checkId
+#ifdef detectionPerformanceMeasurement
+				injectingErrors,
+				3,
+				3,
+				executionId,
+#endif
+				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
+	}
+
+	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
+
+
+	/* Just a random plane model*/
+	//		FAULTDET_testing_injectFault32(curr_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)-1, injectingErrors);
+	//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)-1,  injectingErrors);
+	//		FAULTDET_testing_injectFault32(desired_ailerons, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32), (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32)+(32)+(32)-1,  injectingErrors);
+
+	//				curr_heading += curr_roll/10 * TIME_STEP;
+	//				curr_roll += curr_roll_rate * TIME_STEP;
+	//				curr_roll_rate += desired_ailerons / 5;
+
+
+	//		FAULTDET_testing_injectFault32(curr_heading, executionId, 1408, 1408+32-1, injectingErrors);
+	//		FAULTDET_testing_injectFault32(curr_roll, executionId, 1408+32, 1408+32+32-1,  injectingErrors);
+	//		FAULTDET_testing_injectFault32(curr_roll_rate, executionId, 1408+32+32, 1408+32+32+32-1 /*1503*/,  injectingErrors);
+
+	//	}
+
 	if (executionId>=-1) {
 		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
 	}
-
-	if (executionId==-1) {
-
-		injectingErrors=0xFF;
-	}
-
-#endif
 }
 
 #endif
@@ -1025,13 +883,6 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	//	if (executions==0)
-	//		executions=4000;
-	//	if (regs==0)
-	//		regs=16;
-	//	if (trainIter==0)
-	//		trainIter=8096;
-
 	if (executions==0)
 		executions=4000;
 	if (regs==0)
@@ -1049,13 +900,10 @@ int main(int argc, char * const argv[])
 		for (int j=0; j<FAULTDETECTOR_MAX_REGIONS; j++) {
 			for (int k=0; k<FAULTDETECTOR_MAX_AOV_DIM; k++) {
 				trainedRegions[i][j].center[k]=0.0;
-				//				trainedRegions[i][j].max[k]=100.0;
-				//				trainedRegions[i][j].min[k]=-100.0;
 				trainedRegions[i][j].max[k]=0.0;
 				trainedRegions[i][j].min[k]=0.0;
 			}
 		}
-
 	}
 	FAULTDETECTOR_SW_initRegions(trainedRegions, n_regions);
 #else
@@ -1069,20 +917,20 @@ int main(int argc, char * const argv[])
 	init_train_data();
 	train_ann_routine();
 
-//	init_test_data();
-//	forward_pass_test_burst(-2);
+	//	init_test_data();
+	//	forward_pass_test_burst(-2);
 
 	for (int i=-15000; i<-1; i++) {
 		init_test_data();
 		forward_pass_test_burst(i);
 	}
 
-	for (int i=0; i<500; i++) {
+	for (int i=0; i<5000; i++) {
 		init_test_data();
 
 		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH; executionId++) {
-//			if (executionId==107698)
-//				printf("halt");
+			//			if (executionId==107698)
+			//				printf("halt");
 			forward_pass_test_burst(executionId);
 		}
 		FAULTDET_testing_resetGoldens();
@@ -1099,7 +947,6 @@ int main(int argc, char * const argv[])
 			array_in[i]=x;
 		}
 		fft_routine(executionId);
-
 	}
 
 	for (int i=0; i<10000; i++) {
@@ -1110,27 +957,21 @@ int main(int argc, char * const argv[])
 
 			array_in[i]=x;
 		}
-		injectingErrors=0x0;
-		for (int executionId=-1 ;executionId<LOOP1TOTAL*FFT_LENGTH/*1503*//*960*/; executionId++) {
+		for (int executionId=-1 ;executionId<LOOP1TOTAL*FFT_LENGTH; executionId++) {
 			fft_routine(executionId);
 		}
 		FAULTDET_testing_resetGoldens();
-		injectingErrors=0;
 	}
 #endif
 
 #ifdef latnavBench
-
-	//	for (int i=0; i<1000; i++) {
-	//		injectingErrors=0x0;
-
 
 	for (int executionId=-trainIter-1 ;executionId<-1/*960*/; executionId++) {
 		r1=random_get();
 		r2=random_get();
 		r3=random_get();
 		r4=random_get();
-		latnav(0, executionId);
+		latnav(executionId);
 	}
 
 	for (int i=0; i<executions; i++) {
@@ -1141,18 +982,8 @@ int main(int argc, char * const argv[])
 		r3=random_get();
 		r4=random_get();
 		for (int executionId=-1 ;executionId<1312/*1503*//*960*/; executionId++) {
-			latnav(i, executionId);
+			latnav(executionId);
 		}
-		//		}
-		//#ifdef trainMode
-		//		printf("Training done. ");
-		//		FAULTDET_dumpRegions();
-		//		while(1) {
-		//			//printf("done train");
-		//
-		//		}
-		//#endif
-		//			FAULTDET_hotUpdateRegions(trainedRegions, n_regions);
 	}
 #endif
 	printf("], ");

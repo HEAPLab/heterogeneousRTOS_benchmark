@@ -4,7 +4,7 @@
 #include "xil_types.h"
 
 #define FAULTDETECTOR_EXECINSW
-#define testingCampaign
+#define detectionPerformanceMeasurement
 
 #ifdef FAULTDETECTOR_EXECINSW
 #include "faultdetector_sw.h"
@@ -34,19 +34,18 @@ void FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
 		FAULTDET_ExecutionDescriptor* instance,
 #endif
-		int uniId, int checkId, char blocking,
-#ifdef testingCampaign
+		int uniId, int checkId,
+#ifdef detectionPerformanceMeasurement
 		u8 injectingErrors,
 		int goldenLobound,
 		int goldenUpbound,
-		int roundId,
 		int testingExecutionId,
 #endif
 		int argCount, ...) PRIVILEGED_FUNCTION;
 //char FAULTDET_hasFault()  PRIVILEGED_FUNCTION;
 void FAULTDET_resetFault() PRIVILEGED_FUNCTION;
 
-#ifdef testingCampaign
+#ifdef detectionPerformanceMeasurement
 void FAULTDET_testing_resetGoldens () PRIVILEGED_FUNCTION;
 int FAULTDET_testing_getTotal() PRIVILEGED_FUNCTION;
 int FAULTDET_testing_getOk() PRIVILEGED_FUNCTION;
