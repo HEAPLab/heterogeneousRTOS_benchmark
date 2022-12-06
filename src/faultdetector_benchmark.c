@@ -8,7 +8,7 @@
  ============================================================================
  */
 //#define latnavBench
-#define FFTBench
+#define ANNBench
 #define FAULTDETECTOR_EXECINSW
 #define testingCampaign
 
@@ -22,6 +22,334 @@
 u8 injectingErrors=0;
 float r1, r2, r3, r4;
 
+#ifdef ANNBench
+
+
+#include "simple_random.h"
+
+#include <math.h>
+
+#define IN_NODES 4
+
+#define HIDDEN_NODES 2
+#define HIDDEN_LAYERS 4
+
+#define OUT_NODES 1
+#define LR 0.1
+#define NN_EPOCH 1
+
+#define ARRAY_LENGTH 8
+#define BURST_LENGTH 16
+
+static float test_in[BURST_LENGTH][IN_NODES];
+static float test_out[BURST_LENGTH][OUT_NODES];
+
+static float train_in[ARRAY_LENGTH][IN_NODES];
+static float train_out[ARRAY_LENGTH][OUT_NODES];
+static float net_out[OUT_NODES];
+
+static float in_weight[IN_NODES][HIDDEN_NODES];
+
+static float hl_weight[HIDDEN_LAYERS][HIDDEN_NODES][HIDDEN_NODES];
+static float hl_bias[HIDDEN_LAYERS][HIDDEN_NODES];
+
+static float out_weight[HIDDEN_NODES][OUT_NODES];
+static float out_bias[OUT_NODES];
+
+static float temp_out[HIDDEN_LAYERS][HIDDEN_NODES];
+static float delta_out[OUT_NODES];
+static float delta_hidden[HIDDEN_LAYERS][HIDDEN_NODES];
+
+static float sigmoid(float x){
+	return 1/(1+exp(-x));
+}
+
+static float sigmoid_fault(float x, int executionId){
+	FAULTDET_testing_injectFault32(x, executionId, 32*0, (32*1)-1, injectingErrors);
+	float res=1/(1+exp(-x));
+	FAULTDET_testing_injectFault32(res, executionId, 32*1, (32*2)-1, injectingErrors);
+	return res;
+}
+static float d_sigmoid(float x){
+	return x*(1-x);
+}
+static void init_train_data(){
+	int i;
+	for (i = 0; i < ARRAY_LENGTH; i++){
+		for (int a=0; a<IN_NODES;a++) {
+			train_in[i][a]=random_get();
+		}
+	}
+	for (i = 0; i < ARRAY_LENGTH; i++){
+		for (int a=0; a<OUT_NODES;a++) {
+			train_out[i][a]=random_get();
+		}
+	}
+}
+
+static void init_weights(){
+	int i,h,l;
+
+	for(i=0;i<IN_NODES;i++){
+		for ( h = 0; h < HIDDEN_NODES; h++){
+			in_weight[i][h]=random_get();
+		}
+
+	}
+	for(l=0;l<HIDDEN_LAYERS;l++){
+		for ( h = 0; h < HIDDEN_NODES; h++){
+			hl_bias[l][h]=random_get();
+			for(i=0;i<HIDDEN_NODES;i++){
+				hl_weight[l][h][i]=random_get();
+			}
+		}
+
+	}
+
+	for(i=0;i<OUT_NODES;i++){
+		out_bias[i]=random_get();
+		for ( h = 0; h < HIDDEN_NODES; h++){
+			out_weight[h][i]=random_get();
+		}
+	}
+
+}
+static void forward_pass(int train_idx){
+	int h,l,y;
+
+	for(h=0;h<HIDDEN_NODES;h++){
+		int x;
+		float activation;
+
+		activation=hl_bias[0][h];
+		for(x=0;x<IN_NODES;x++){
+			activation+=(in_weight[x][h]*train_in[train_idx][x]);
+		}
+		temp_out[0][h]=sigmoid(activation);
+	}
+	for(l=1;l<HIDDEN_LAYERS;l++){
+		for(h=0;h<HIDDEN_NODES;h++){
+			float activation;
+			int x;
+
+			activation=hl_bias[l][h];
+			for(x=0;x<HIDDEN_NODES;x++){
+				activation+=(hl_weight[l][h][x]*temp_out[l-1][h]);
+			}
+			temp_out[l][h]=sigmoid(activation);
+		}
+	}
+	for(y=0;y<OUT_NODES;y++){
+		float activation;
+
+		activation=out_bias[y];
+		for(h=0;h<HIDDEN_NODES;h++){
+			activation+=(out_weight[h][y]*temp_out[HIDDEN_LAYERS-1][h]);
+		}
+		net_out[y]=sigmoid(activation);
+	}
+}
+
+#define LOOP3TOTAL (32*3)
+#define LOOP2TOTAL (64+LOOP3TOTAL*IN_NODES)
+
+#define LOOP6TOTAL (32*3)
+#define LOOP5TOTAL (64+LOOP6TOTAL*HIDDEN_NODES)
+#define LOOP4TOTAL ((LOOP5TOTAL*HIDDEN_NODES)*(HIDDEN_LAYERS-1))
+
+#define LOOP8TOTAL (32*3)
+#define LOOP7TOTAL (64+LOOP8TOTAL*HIDDEN_NODES)
+
+#define LOOP1TOTAL (LOOP2TOTAL*HIDDEN_NODES+LOOP4TOTAL*HIDDEN_LAYERS+LOOP7TOTAL*OUT_NODES)
+
+static void forward_pass_test_burst(int executionId){
+	int h,l,y;
+
+	if (executionId>=0)
+		injectingErrors=0xFF;
+	else
+		injectingErrors=0x0;
+
+	for (int b=0; b<BURST_LENGTH; b++) { //LOOP1
+
+		for(h=0;h<HIDDEN_NODES;h++){ //LOOP2
+			int x;
+			float activation;
+
+			activation=hl_bias[0][h];
+
+			//			FAULTDET_testing_injectFault32(activation, executionId, 32*0+LOOP2TOTAL*h+LOOP1TOTAL*b, (32*1)-1+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
+
+			for(x=0;x<IN_NODES;x++){ //LOOP3
+				float v1=in_weight[x][h];
+				float v2=test_in[b][x];
+				FAULTDET_testing_injectFault32(v1, executionId, 32*0+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, (32*1)-1+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
+				FAULTDET_testing_injectFault32(v2, executionId, 32*1+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, (32*2)-1+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
+
+				FAULTDET_testing_injectFault32(activation, executionId, 32*2+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, (32*3)-1+LOOP3TOTAL*x+LOOP2TOTAL*h+LOOP1TOTAL*b, injectingErrors);
+
+				activation+=(v1*v2);
+			}
+			temp_out[0][h]=sigmoid_fault(activation, executionId - (LOOP3TOTAL*IN_NODES+LOOP2TOTAL*h+LOOP1TOTAL*b)); //64
+		}
+
+		for(l=1;l<HIDDEN_LAYERS;l++){ //LOOP4
+			for(h=0;h<HIDDEN_NODES;h++){ //LOOP5
+				float activation;
+				int x;
+
+				activation=hl_bias[l][h];
+
+				//				FAULTDET_testing_injectFault32(activation, executionId, 32*0+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*1-1+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+
+				for(x=0;x<HIDDEN_NODES;x++){ //LOOP6
+					float v1=hl_weight[l][h][x];
+					float v2=temp_out[l-1][h];
+
+					FAULTDET_testing_injectFault32(v1, executionId, 32*0+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*1-1+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+					FAULTDET_testing_injectFault32(v2, executionId, 32*1+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*2-1+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+
+					FAULTDET_testing_injectFault32(activation, executionId, 32*2+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*3-1+LOOP6TOTAL*x+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+
+					activation+=(v1*v2);
+
+				}
+				temp_out[l][h]=sigmoid_fault(activation, executionId - (LOOP6TOTAL*HIDDEN_NODES+LOOP4TOTAL*l+LOOP5TOTAL*h+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b));
+			}
+		}
+
+		for(y=0;y<OUT_NODES;y++){ //LOOP7
+			float activation;
+
+			activation=out_bias[y];
+
+			//			FAULTDET_testing_injectFault32(activation, executionId, 32*0+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*1-1+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+
+			for(h=0;h<HIDDEN_NODES;h++){ //LOOP8
+				float v1=out_weight[h][y];
+				float v2=temp_out[HIDDEN_LAYERS-1][h];
+				FAULTDET_testing_injectFault32(v1, executionId, 32*0+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*1-1+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+				FAULTDET_testing_injectFault32(v2, executionId, 32*1+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*2-1+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+
+				FAULTDET_testing_injectFault32(activation, executionId, 32*2+LOOP8TOTAL*h+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, 32*3-1+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b, injectingErrors);
+
+				activation+=(v1*v2);
+			}
+			test_out[b][y]=sigmoid_fault(activation, executionId - (LOOP8TOTAL*HIDDEN_NODES+LOOP7TOTAL*y+LOOP4TOTAL*HIDDEN_LAYERS+LOOP2TOTAL*HIDDEN_NODES+LOOP1TOTAL*b));
+		}
+
+		if (executionId<-1) {
+			FAULTDET_trainPoint(
+					b,
+					0,  //ceckId
+					5,
+					&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(test_out[b][1]));
+		} else {
+			FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+					&inst,
+#endif
+					b, //uniId
+					0, //checkId
+					0, //BLOCKING OR NON BLOCKING, non blocking
+#ifdef testingCampaign
+					injectingErrors,
+					4,
+					4,
+					0,
+					executionId,
+#endif
+					5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(test_out[b][1]));
+		}
+	}
+	if (executionId>=-1) {
+		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
+	}
+}
+
+static void back_propagation(int train_idx){
+	int y,h,l,x;
+	/*Compute deltas for OUTPUT LAYER*/
+	for(y=0;y<OUT_NODES;y++){
+		delta_out[y] = (train_out[train_idx][y]-net_out[y])*d_sigmoid(net_out[y]);
+	}
+	/* Compute deltas for HIDDEN LAYER */
+	for(h=0;h<HIDDEN_NODES;h++){
+		float d_error;
+
+		d_error=0;
+		for(y=0;y<OUT_NODES;y++){
+			d_error+=delta_out[y]*out_weight[h][y];
+		}
+		delta_hidden[HIDDEN_LAYERS-1][h]=d_error*sigmoid(temp_out[HIDDEN_LAYERS-1][h]);
+	}
+	for(l=HIDDEN_NODES-2;l>=0;l--){
+		for(h=0;h<HIDDEN_NODES;h++){
+			float d_error;
+
+			d_error=0;
+			for(y=0;y<HIDDEN_NODES;y++){
+				d_error+=delta_hidden[l+1][y]*hl_weight[l][h][y];
+			}
+			delta_hidden[l][h]=d_error*sigmoid(temp_out[l][h]);
+		}
+	}
+
+	/*Update weights*/
+	for(y=0;y<OUT_NODES;y++){
+		out_bias[y]+=delta_out[y]*LR;
+		for(h=0;h<HIDDEN_NODES;h++){
+			out_weight[h][y]+=temp_out[HIDDEN_LAYERS-1][h]*delta_out[y]*LR;
+		}
+	}
+	for(l=HIDDEN_NODES-2;l>0;l--){
+		for(h=0;h<HIDDEN_NODES;h++){
+			hl_bias[l][h]+=delta_hidden[l][h]*LR;
+			for(x=0;x<IN_NODES;x++){
+				hl_weight[l][h][x]+=temp_out[l-1][x]*delta_hidden[l][h]*LR;
+			}
+		}
+	}
+
+	for(h=0;h<HIDDEN_NODES;h++){
+		hl_bias[0][h]+=delta_hidden[0][h]*LR;
+		for(x=0;x<IN_NODES;x++){
+			in_weight[x][h]+=train_in[train_idx][x]*delta_hidden[0][h]*LR;
+		}
+	}
+
+}
+
+static void init_test_data(){
+	for (int i=0; i<BURST_LENGTH; i++) {
+		for (int a=0; a<IN_NODES;a++) {
+			test_in[i][a]=random_get();
+		}
+	}
+}
+
+static void train_ann_routine(){
+	int i,j;
+
+	init_weights();
+	for(i=0; i<NN_EPOCH;i++){
+
+		for(j=0; j<ARRAY_LENGTH; j++){
+			forward_pass(j);
+
+			back_propagation(j);
+		}
+
+	}
+}
+
+
+
+
+
+
+#endif
 
 #ifdef FFTBench
 
@@ -175,10 +503,8 @@ static void fft_routine(int executionId){
 		}
 
 
-
 		odd_sum.re=0;
 		odd_sum.im=0;
-
 
 		for(n=1;n<FFT_LENGTH;n=n+2){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (32*4+n*LOOP3TOTAL+FFT_LENGTH*LOOP2TOTAL+k*LOOP1TOTAL) ); //96
@@ -744,6 +1070,27 @@ int main(int argc, char * const argv[])
 
 	random_set_seed(1);
 
+#ifdef ANNBench
+
+	init_train_data();
+	train_ann_routine();
+
+	for (int i=-5000; i<-1; i++) {
+		init_test_data();
+		forward_pass_test_burst(i);
+	}
+
+	for (int i=0; i<50; i++) {
+		init_test_data();
+		injectingErrors=0x0;
+
+		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH/*1503*//*960*/; executionId++) {
+			forward_pass_test_burst(executionId);
+		}
+		FAULTDET_testing_resetGoldens();
+	}
+#endif
+
 #ifdef FFTBench
 	for (int executionId=-10000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
@@ -772,9 +1119,7 @@ int main(int argc, char * const argv[])
 		FAULTDET_testing_resetGoldens();
 		injectingErrors=0;
 	}
-
 #endif
-
 
 #ifdef latnavBench
 
