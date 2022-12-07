@@ -1,6 +1,6 @@
-#define latnavBench
+//#define latnavBench
 //#define FFTBench
-//#define ANNBench
+#define ANNBench
 #define FAULTDETECTOR_EXECINSW
 #define detectionPerformanceMeasurement
 
@@ -239,7 +239,6 @@ static void forward_pass_test_burst(int executionId){
 					injectingErrors,
 					4,
 					4,
-					0,
 					executionId,
 #endif
 					5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
@@ -475,7 +474,6 @@ static void fft_routine(int executionId){
 					injectingErrors,
 					4,
 					5,
-					0,
 					executionId,
 #endif
 					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
@@ -518,7 +516,6 @@ static void fft_routine(int executionId){
 					injectingErrors,
 					4,
 					5,
-					0,
 					executionId,
 #endif
 					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)

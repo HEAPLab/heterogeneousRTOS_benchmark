@@ -114,7 +114,7 @@ def main():
                 #plt.plot(x_vals, density(x_vals))
             #except np.linalg.LinAlgError:
             #    print("singular matrix\n")
-    fig, ax = plt.subplots()
+    """fig, ax = plt.subplots()
     relerrarr=(np.array(fn_withthresh)/np.array(total_neg))*np.array(100)
     ax.plot(fntresholds, (relerrarr))
     plt.gcf().subplots_adjust(left=0.2)
@@ -125,11 +125,11 @@ def main():
     plt.xlabel("Accepted relative error threshold")
     plt.ylabel("False negatives rate")
     
-    plt.show()
+    plt.show()"""
             
 
 
-    """fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
     #X,Y=np.meshgrid(regions_x, regions_trainIterations)
     #Z=np.array(regions_fn_rate)
     surf=ax.plot_trisurf(np.log2(regions_x).astype(int), np.log2((np.array(regions_trainIterations)/100)).astype(int), regions_fn_rate, cmap=cm.coolwarm, linewidth=0, antialiased=False)
@@ -167,7 +167,9 @@ def main():
     ax.set_xlabel('Regions')
     ax.set_ylabel('Training iterations')
     ax.set_zlabel('False positives rate')
-    """
+
+    plt.show()
+
 
 
 
