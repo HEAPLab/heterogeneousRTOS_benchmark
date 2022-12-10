@@ -1,6 +1,8 @@
 //#define latnavBench
-#define FFTBench
+//#define FFTBench
 //#define ANNBench
+#define gaussianBench
+
 #define FAULTDETECTOR_EXECINSW
 #define detectionPerformanceMeasurement
 
@@ -12,6 +14,212 @@
 #include <string.h>
 
 u8 injectingErrors=0;
+
+#ifdef gaussianBench
+
+//at least one of them must be even
+#define IMG_HEIGHT 16
+#define IMG_WIDTH 16
+
+#define KERNEL_SIZE 5
+
+#define SIGMA 1.0
+
+#ifndef USER_GAUSS_FILTER
+static unsigned char mat_in[IMG_HEIGHT][IMG_WIDTH];
+static unsigned char mat_out[IMG_HEIGHT][IMG_WIDTH];
+#endif
+
+/* KERNEL_SIZExKERNEL_SIZE gaussian filter with origin in (1,1) */
+static float kernel[KERNEL_SIZE][KERNEL_SIZE];
+
+/**
+ * @brief It generates a KERNEL_SIZE x KERNEL_SIZE gaussian kernel
+ *
+ */
+static void gaussian_kernel_init(){
+	int i,j;
+	float sum=0;
+	for (i = 0; i < KERNEL_SIZE; i++) {
+		for (j = 0; j < KERNEL_SIZE; j++) {
+			float x = i - (KERNEL_SIZE - 1) / 2.0;
+			float y = j - (KERNEL_SIZE - 1) / 2.0;
+			kernel[i][j] =  exp(((pow(x, 2) + pow(y, 2)) / ((2 * pow(SIGMA, 2)))) * (-1));
+			sum += kernel[i][j];
+		}
+	}
+
+	for (i = 0; i < KERNEL_SIZE; i++) {
+		for (j = 0; j < KERNEL_SIZE; j++) {
+			kernel[i][j] /= sum;
+		}
+	}
+}
+
+/**
+ * @brief Performs 2D convolution of KERNEL_SIZExKERNEL_SIZE kernel with mat_in
+ *
+ * @param p_x  center point x coordinate
+ * @param p_y center point y coordinate
+ * @return int result of 2d convolution of kernel centred in mat_in[p_x][p_y]
+ */
+char horizontalAccumulate=0x0;
+float oldtemp;
+float faultdet_vals[KERNEL_SIZE];
+char train;
+int uniIdCtr=0;
+
+static int convolution2D(int p_x, int p_y, int executionId){
+	int k_r,offset_x,offset_y,i,j;
+	float temp;
+
+	/*Kernel radius*/
+	k_r=KERNEL_SIZE/2;
+
+	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
+	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+		return mat_in[p_x][p_y];
+	}
+	/*offset between kernel's indexes and array's ones*/
+	offset_x=p_x-k_r;
+	offset_y=p_y-k_r;
+
+	oldtemp=temp;
+	temp=0;
+
+	int ctr=0;
+
+	/*    for(i=p_x-k_r;i<=p_x+k_r;i++){
+        for(j=p_y-k_r;j<=p_y+k_r;j++){
+        	unsigned char in=mat_in[i+j][j];
+            temp+=kernel[i-offset_x+j-offset_y][j-offset_y] * in;
+            faultdet_vals[ctr]+=in;
+        }
+        ctr++;
+    }*/
+
+	if (horizontalAccumulate) {
+		for (int i=0; i<KERNEL_SIZE; i++) {
+			faultdet_vals[i]=0;
+		}
+
+		for(i=p_x-k_r;i<=p_x+k_r;i++){
+			int ctr=0;
+			for(j=p_y-k_r;j<=p_y+k_r;j++) {
+				unsigned char in=mat_in[i][j];
+				temp+=kernel[i-offset_x][j-offset_y] * in;
+				faultdet_vals[ctr]+=in;
+				ctr++;
+			}
+		}
+
+		float out=temp-oldtemp;
+
+		if (train) {
+			FAULTDET_trainPoint(
+					uniIdCtr/*p_x*IMG_WIDTH+p_y*/,
+					0,  //checkId
+					6,
+					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
+		} else {
+			FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+					&inst,
+#endif
+					uniIdCtr/*p_x*IMG_WIDTH+p_y*/,
+					0, //checkId
+#ifdef detectionPerformanceMeasurement
+					injectingErrors,
+					5,
+					5,
+					executionId,
+#endif
+					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
+		}
+		uniIdCtr++;
+
+
+	} else {
+		for(i=p_x-k_r;i<=p_x+k_r;i++){
+			for(j=p_y-k_r;j<=p_y+k_r;j++){
+				unsigned char in=mat_in[i][j];
+				temp+=kernel[i-offset_x][j-offset_y] * in;
+				faultdet_vals[ctr]+=in;
+			}
+			ctr++;
+		}
+
+
+		int currVecSize=KERNEL_SIZE;
+		while (currVecSize>5) {
+			for (int i=0; i<KERNEL_SIZE-1; i+=2) {
+				faultdet_vals[currVecSize]=faultdet_vals[currVecSize+1];
+				currVecSize--;
+				if (currVecSize<=5)
+					break;
+			}
+		}
+	}
+	horizontalAccumulate=!horizontalAccumulate;
+	return temp;
+}
+
+
+/**
+ * @brief Actual gaussian filter implementation
+ *
+ */
+static void gauss_filter_routine(int executionId){
+
+	horizontalAccumulate=0x0;
+	uniIdCtr=0;
+
+	int i,j;
+	if (executionId<-1)
+		train=0xFF;
+	else
+		train=0x0;
+
+	if (executionId>=0)
+		injectingErrors=0xFF;
+	else
+		injectingErrors=0x0;
+
+	for(i=0;i<IMG_HEIGHT;i++){
+		for(j=0;j<IMG_WIDTH;j++){
+			mat_out[i][j]=convolution2D(i,j, executionId);
+		}
+	}
+	if (!train) {
+		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
+	}
+
+	if (horizontalAccumulate) {
+		printf("ERROR, HEIGHT OR WIDTH MUST BE EVEN\n");
+	}
+}
+
+/**
+ * @brief It performs gaussian filtering on a random grayscale image . The execution time is measured through user defined MEASURE_START()/MEASURE_STOP() macros.
+ */
+//void gauss_filter(int executionId){
+//	int i;
+//	int j;
+//
+//	for (i = 0; i < IMG_HEIGHT; i++){
+//		for (j = 0; j < IMG_WIDTH; j++){
+//			mat_in[i][j]=random_get()*256;
+//			mat_in[i+IMG_HEIGHT][j]=mat_in[i][j];
+//		}
+//	}
+//	/*kernel initialization*/
+//	gaussian_kernel_init();
+//
+//	gauss_filter_routine(executionId);
+//
+//}
+#endif
 
 #ifdef ANNBench
 
@@ -244,9 +452,10 @@ static void forward_pass_test_burst(int executionId){
 					5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
 					&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(test_out[b][0]));
 		}
-	}
-	if (executionId>=-1) {
-		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
+
+		if (executionId>=-1) {
+			FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
+		}
 	}
 }
 
@@ -1041,6 +1250,14 @@ void latnav(int executionId) {
 
 #endif
 
+void init_img_matrix() {
+	for (int i = 0; i < IMG_HEIGHT; i++){
+		for (int j = 0; j < IMG_WIDTH; j++){
+			mat_in[i][j]=random_get()*256;
+		}
+	}
+}
+
 #include <locale.h>
 int main(int argc, char * const argv[])
 {
@@ -1107,6 +1324,34 @@ int main(int argc, char * const argv[])
 
 	random_set_seed(1);
 
+	gaussian_kernel_init();
+
+#ifdef gaussianBench
+	for (int i=-300; i<-1; i++) {
+		init_img_matrix();
+		gauss_filter_routine(i);
+	}
+
+	FAULTDET_testing_resetGoldens();
+
+
+	for (int i=0; i<2; i++) {
+		init_img_matrix();
+
+		for (int executionId=-1 ;executionId<1; executionId++) {
+//			unsigned int acc=0;
+//			for (int i = 0; i < IMG_HEIGHT; i++){
+//				for (int j = 0; j < IMG_WIDTH; j++){
+//					acc+=mat_in[i][j];
+//				}
+//			}
+//			printf("acc: %u", acc);
+			gauss_filter_routine(executionId);
+		}
+		FAULTDET_testing_resetGoldens();
+	}
+#endif
+
 #ifdef ANNBench
 
 	init_train_data();
@@ -1124,8 +1369,6 @@ int main(int argc, char * const argv[])
 		init_test_data();
 
 		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH; executionId++) {
-			//			if (executionId==107698)
-			//				printf("halt");
 			forward_pass_test_burst(executionId);
 		}
 		FAULTDET_testing_resetGoldens();

@@ -94,9 +94,9 @@ void FAULTDET_testing_blockUntilProcessed (FAULTDET_ExecutionDescriptor* instanc
 	}
 }
 #endif
-#define GOLDEN_RESULT_SIZE 160
-int FAULTDET_testing_goldenResults_size=0;
-int FAULTDET_testing_goldenResults_idx_tmp=0;
+#define GOLDEN_RESULT_SIZE 32768
+static int FAULTDET_testing_goldenResults_size=0;
+static int FAULTDET_testing_goldenResults_idx_tmp=0;
 
 FAULTDETECTOR_testpointDescriptorStr FAULTDET_testing_goldenResults[GOLDEN_RESULT_SIZE];
 
@@ -105,23 +105,23 @@ void FAULTDET_testing_resetGoldens () {
 	FAULTDET_testing_goldenResults_idx_tmp=0;
 }
 
-float FAULTDET_testing_relativeErrors[GOLDEN_RESULT_SIZE*FAULTDETECTOR_MAX_AOV_DIM];
-int FAULTDET_testing_relativeErrors_size=0;
+static float FAULTDET_testing_relativeErrors[GOLDEN_RESULT_SIZE*FAULTDETECTOR_MAX_AOV_DIM];
+static int FAULTDET_testing_relativeErrors_size=0;
 
 
-int FAULTDET_testing_total=0;
-int FAULTDET_testing_ok=0;
-int FAULTDET_testing_total_golden=0;
-int FAULTDET_testing_ok_golden=0;
-int FAULTDET_testing_falsePositives_golden=0;
-int FAULTDET_testing_falseNegatives=0;
-int FAULTDET_testing_noeffects=0;
-int FAULTDET_testing_falseNegatives_wtolerance=0;
-int FAULTDET_testing_ok_wtolerance=0;
+static int FAULTDET_testing_total=0;
+static int FAULTDET_testing_ok=0;
+static int FAULTDET_testing_total_golden=0;
+static int FAULTDET_testing_ok_golden=0;
+static int FAULTDET_testing_falsePositives_golden=0;
+static int FAULTDET_testing_falseNegatives=0;
+static int FAULTDET_testing_noeffects=0;
+static int FAULTDET_testing_falseNegatives_wtolerance=0;
+static int FAULTDET_testing_ok_wtolerance=0;
 
-char FAULTDET_testing_temp_aovchanged=0;
-char FAULTDET_testing_temp_faultdetected=0;
-char FAULTDET_testing_temp_lastoutputchanged=0;
+static char FAULTDET_testing_temp_aovchanged=0;
+static char FAULTDET_testing_temp_faultdetected=0;
+static char FAULTDET_testing_temp_lastoutputchanged=0;
 
 void FAULTDET_testing_commitTmpStatsAndReset(u8 injectingFault) {
 #ifndef csvOut
