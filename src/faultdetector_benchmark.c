@@ -69,6 +69,9 @@ float faultdet_vals[KERNEL_SIZE];
 char train;
 int uniIdCtr=0;
 
+#define LOOP2TOTAL (8+32*2)
+#define LOOP1TOTAL (LOOP2TOTAL*KERNEL_SIZE)
+#define CONVOLUTIONTOTAL (LOOP1TOTAL*KERNEL_SIZE/*+8*1+32*3*/)
 static int convolution2D(int p_x, int p_y, int executionId){
 	int k_r,offset_x,offset_y,i,j;
 	float temp;
@@ -76,18 +79,26 @@ static int convolution2D(int p_x, int p_y, int executionId){
 	/*Kernel radius*/
 	k_r=KERNEL_SIZE/2;
 
+//	FAULTDET_testing_injectFault32(p_x, executionId, 32*0, injectingErrors);
+//	FAULTDET_testing_injectFault32(p_y, executionId, 32*1, injectingErrors);
+//	FAULTDET_testing_injectFault32(k_r, executionId, 32*0, injectingErrors);
+
 	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
 	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
-		return mat_in[p_x][p_y];
+		unsigned char res=mat_in[p_x][p_y];
+//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
+		return res;
 	}
 	/*offset between kernel's indexes and array's ones*/
 	offset_x=p_x-k_r;
 	offset_y=p_y-k_r;
 
+//	FAULTDET_testing_injectFault32(offset_x, executionId, 32*1+8*1, injectingErrors);
+//	FAULTDET_testing_injectFault32(offset_y, executionId, 32*2+8*1, injectingErrors);
+
 	oldtemp=temp;
 	temp=0;
 
-	int ctr=0;
 
 	/*    for(i=p_x-k_r;i<=p_x+k_r;i++){
         for(j=p_y-k_r;j<=p_y+k_r;j++){
@@ -103,14 +114,20 @@ static int convolution2D(int p_x, int p_y, int executionId){
 			faultdet_vals[i]=0;
 		}
 
-		for(i=p_x-k_r;i<=p_x+k_r;i++){
-			int ctr=0;
-			for(j=p_y-k_r;j<=p_y+k_r;j++) {
+		int loop1ctr=0;
+		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+			int loop2ctr=0;
+			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
 				unsigned char in=mat_in[i][j];
-				temp+=kernel[i-offset_x][j-offset_y] * in;
-				faultdet_vals[ctr]+=in;
-				ctr++;
+				float kernelin=kernel[i-offset_x][j-offset_y];
+				FAULTDET_testing_injectFault8(in, executionId, LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+				FAULTDET_testing_injectFault32(kernelin, executionId, 8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+				temp+=kernelin * in;
+				FAULTDET_testing_injectFault32(temp, executionId, 32*1+8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+				faultdet_vals[loop2ctr]+=in;
+				loop2ctr++;
 			}
+			loop1ctr++;
 		}
 
 		float out=temp-oldtemp;
@@ -136,18 +153,25 @@ static int convolution2D(int p_x, int p_y, int executionId){
 #endif
 					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
 					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
+			uniIdCtr++;
 		}
-		uniIdCtr++;
 
 
 	} else {
-		for(i=p_x-k_r;i<=p_x+k_r;i++){
-			for(j=p_y-k_r;j<=p_y+k_r;j++){
+		int loop1ctr=0;
+		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
+			int loop2ctr=0;
+			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
 				unsigned char in=mat_in[i][j];
-				temp+=kernel[i-offset_x][j-offset_y] * in;
-				faultdet_vals[ctr]+=in;
+				float kernelin=kernel[i-offset_x][j-offset_y];
+				FAULTDET_testing_injectFault8(in, executionId, LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+				FAULTDET_testing_injectFault32(kernelin, executionId, 8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+				temp+=kernelin * in;
+				FAULTDET_testing_injectFault8(temp, executionId, 32*1+8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+				faultdet_vals[loop1ctr]+=in;
+				loop2ctr++;
 			}
-			ctr++;
+			loop1ctr++;
 		}
 
 
@@ -188,7 +212,12 @@ static void gauss_filter_routine(int executionId){
 
 	for(i=0;i<IMG_HEIGHT;i++){
 		for(j=0;j<IMG_WIDTH;j++){
-			mat_out[i][j]=convolution2D(i,j, executionId);
+//			if (executionId==95203) {
+//				printf("pippo");
+//				printf("i: %d, j: %d\n", i, j);
+//			}
+
+			mat_out[i][j]=convolution2D(i,j, executionId - (CONVOLUTIONTOTAL*(i*IMG_WIDTH+j)));
 		}
 	}
 	if (!train) {
@@ -1334,11 +1363,10 @@ int main(int argc, char * const argv[])
 
 	FAULTDET_testing_resetGoldens();
 
-
-	for (int i=0; i<2; i++) {
+	for (int i=0; i<5; i++) {
 		init_img_matrix();
 
-		for (int executionId=-1 ;executionId<1; executionId++) {
+		for (int executionId=-1 ;executionId<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH; executionId++) {
 //			unsigned int acc=0;
 //			for (int i = 0; i < IMG_HEIGHT; i++){
 //				for (int j = 0; j < IMG_WIDTH; j++){
@@ -1346,7 +1374,10 @@ int main(int argc, char * const argv[])
 //				}
 //			}
 //			printf("acc: %u", acc);
+
 			gauss_filter_routine(executionId);
+//			printf("%d\n", executionId);
+//			fflush(stdout);
 		}
 		FAULTDET_testing_resetGoldens();
 	}

@@ -68,6 +68,11 @@ void FAULTDET_testing_commitTmpStatsAndReset(u8 injectingFault) PRIVILEGED_FUNCT
 		if ( inject && execId >= lobound && execId <= ( lobound+31 ) ) {\
 			(*((u32*)(&var))) = ( (*((u32*)(&var))) & (~(0x1 << ( lobound == 0 ? execId : ( execId % lobound ) ) ))) | ((~ (*((u32*)(&var))) ) & (0x1 << ( lobound == 0 ? execId : ( execId % lobound ) )));\
 		}
+
+#define FAULTDET_testing_injectFault8(var, execId, lobound, inject)\
+		if ( inject && execId >= lobound && execId <= ( lobound+7 ) ) {\
+			(*((u8*)(&var))) = ( (*((u8*)(&var))) & (~(0x1 << ( lobound == 0 ? execId : ( execId % lobound ) ) ))) | ((~ (*((u8*)(&var))) ) & (0x1 << ( lobound == 0 ? execId : ( execId % lobound ) )));\
+		}
 #endif
 
 //#define FAULTDET_testing_injectFault32(var, execId, lobound, upbound, inject, offset, offseti)\
