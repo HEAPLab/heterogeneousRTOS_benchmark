@@ -132,6 +132,16 @@ static int convolution2D(int p_x, int p_y, int executionId){
 
 		float out=temp-oldtemp;
 
+		int currVecSize=KERNEL_SIZE;
+		while (currVecSize>5) {
+			for (int i=0; i<KERNEL_SIZE-1; i+=2) {
+				faultdet_vals[currVecSize]=faultdet_vals[currVecSize+1];
+				currVecSize--;
+				if (currVecSize<=5)
+					break;
+			}
+		}
+
 		if (train) {
 			FAULTDET_trainPoint(
 					uniIdCtr/*p_x*IMG_WIDTH+p_y*/,
@@ -172,17 +182,6 @@ static int convolution2D(int p_x, int p_y, int executionId){
 				loop2ctr++;
 			}
 			loop1ctr++;
-		}
-
-
-		int currVecSize=KERNEL_SIZE;
-		while (currVecSize>5) {
-			for (int i=0; i<KERNEL_SIZE-1; i+=2) {
-				faultdet_vals[currVecSize]=faultdet_vals[currVecSize+1];
-				currVecSize--;
-				if (currVecSize<=5)
-					break;
-			}
 		}
 	}
 	horizontalAccumulate=!horizontalAccumulate;
@@ -1353,15 +1352,14 @@ int main(int argc, char * const argv[])
 
 	random_set_seed(1);
 
-	gaussian_kernel_init();
 
 #ifdef gaussianBench
+	gaussian_kernel_init();
+
 	for (int i=-300; i<-1; i++) {
 		init_img_matrix();
 		gauss_filter_routine(i);
 	}
-
-	FAULTDET_testing_resetGoldens();
 
 	for (int i=0; i<5; i++) {
 		init_img_matrix();
