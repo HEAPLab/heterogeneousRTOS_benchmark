@@ -22,11 +22,11 @@
 
 #include "perf_timer.h"
 
-#define FAULTDETECTOR_EXECINSW
+//#define FAULTDETECTOR_EXECINSW
 
-#define ANNBench
+//#define ANNBench
 //#define imgscalingBench
-//#define FFTBench
+#define FFTBench
 //#define latnavBench
 
 #include "simple_random.h"
@@ -196,7 +196,7 @@ FAULTDETECTOR_controlStr contr;
 #define NN_EPOCH 1
 
 #define ARRAY_LENGTH 8
-#define BURST_LENGTH 1
+#define BURST_LENGTH 8
 
 static float test_in[BURST_LENGTH][IN_NODES];
 static float test_out[BURST_LENGTH][OUT_NODES];
@@ -373,15 +373,15 @@ static void forward_pass_test_burst_train(){
 
 				activation+=(v1*v2);
 			}
-			test_out[b][y]=sigmoid(activation);
+			float out=sigmoid(activation);
+			FAULTDET_trainPoint(
+					b,
+					0,  //ceckId
+					5,
+					&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(out));
+			test_out[b][y]=out;
 		}
 
-
-		FAULTDET_trainPoint(
-				b,
-				0,  //ceckId
-				5,
-				&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(test_out[b][0]));
 	}
 }
 
@@ -434,22 +434,27 @@ static void forward_pass_test_burst_test(){
 
 				activation+=(v1*v2);
 			}
-			test_out[b][y]=sigmoid(activation);
-		}
+			float out=sigmoid(activation);
 
-//		contr.uniId=b;
-//		contr.checkId=0;
-//		//		contr.taskId=0;
-//		//		contr.executionId=0;
-//		//		contr.command=2;
-//		contr.AOV[0]=test_in[b][0];
-//		contr.AOV[1]=test_in[b][1];
-//		contr.AOV[2]=test_in[b][2];
-//		contr.AOV[3]=test_in[b][3];
-//		contr.AOV[4]=test_out[b][0];
-//		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-//		//		FAULTDET_Test(&contr);
-//		FAULTDET_testPoint(&contr);
+			contr.uniId=b;
+			contr.checkId=0;
+			//		contr.taskId=0;
+			//		contr.executionId=0;
+			//		contr.command=2;
+			contr.AOV[0]=test_in[b][0];
+			contr.AOV[1]=test_in[b][1];
+			contr.AOV[2]=test_in[b][2];
+			contr.AOV[3]=test_in[b][3];
+			contr.AOV[4]=out;
+			//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+			//		FAULTDET_Test(&contr);
+			FAULTDET_testPoint(&contr);
+#ifndef FAULTDETECTOR_EXECINSW
+			if (b==BURST_LENGTH-1)
+				FAULTDET_blockIfFaultDetectedInTask(&contr);
+#endif
+			test_out[b][y]=out;
+		}
 	}
 	perf_stop_clock();
 	printf("%u\n", get_clock_L());
@@ -525,8 +530,6 @@ static void train_ann_routine(){
 
 	}
 }
-
-
 #endif
 
 
@@ -620,127 +623,214 @@ static void fft_routine_test(){
 		int n;
 		complex even_sum,odd_sum;
 
+		float v1, v2, v3, v4;
+
 		even_sum.re=0;
 		even_sum.im=0;
+
+
+		int idx=0;
+		float mul=0;
+		complex tmp;
+		tmp.im=0;
+		tmp.re=0;
 
 		for(n=0;n<FFT_LENGTH;n=n+2){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
-			complex_sum(even_sum,n_term); //192
-		}
+			complex_sum(tmp, n_term); //192
 
-		contr.uniId=1;
-		contr.checkId=k;
-		//		contr.taskId=0;
-		//		contr.executionId=0;
-		//		contr.command=2;
-		contr.AOV[0]=array_in[0].re+array_in[2].re;
-		contr.AOV[1]=array_in[4].re+array_in[6].re;
-		contr.AOV[2]=array_in[0].im+array_in[2].im;
-		contr.AOV[3]=array_in[4].im+array_in[6].im;
-		contr.AOV[4]=even_sum.re;
-		contr.AOV[5]=even_sum.im;
-		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-		//		FAULTDET_Test(&contr);
-		FAULTDET_testPoint(&contr);
+
+			switch(idx) {
+			case 0:
+				v1=array_in[n].re;
+				v3=array_in[n].im;
+				idx++;
+				break;
+			case 1:
+				v1+=array_in[n].re;
+				v3+=array_in[n].im;
+				idx++;
+				break;
+			case 2:
+				v2=array_in[n].re;
+				v4=array_in[n].im;
+				idx++;
+				break;
+			case 3:
+				v2+=array_in[n].re;
+				v4+=array_in[n].im;
+
+				mul=n*k;
+
+				contr.uniId=1;
+				contr.checkId=0;
+				//		contr.taskId=0;
+				//		contr.executionId=0;
+				//		contr.command=2;
+				contr.AOV[0]=v1;
+				contr.AOV[1]=v2;
+				contr.AOV[2]=v3;
+				contr.AOV[3]=v4;
+				contr.AOV[4]=tmp.re;
+				contr.AOV[5]=tmp.im;
+				contr.AOV[6]=mul;
+				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+				//		FAULTDET_Test(&contr);
+				FAULTDET_testPoint(&contr);
+
+
+				complex_sum(even_sum,tmp); //192
+
+				idx=0;
+				tmp.im=0;
+				tmp.re=0;
+				break;
+			}
+		}
 
 		odd_sum.re=0;
 		odd_sum.im=0;
 
+		idx=0;
+		mul=0;
+
+		tmp.im=0;
+		tmp.re=0;
 
 		for(n=1;n<FFT_LENGTH;n=n+2){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
-			complex_sum(odd_sum,n_term); //192
+			complex_sum(tmp,n_term); //192
+
+			switch(idx) {
+			case 0:
+				v1=array_in[n].re;
+				v3=array_in[n].im;
+				idx++;
+				break;
+			case 1:
+				v1+=array_in[n].re;
+				v3+=array_in[n].im;
+				idx++;
+				break;
+			case 2:
+				v2=array_in[n].re;
+				v4=array_in[n].im;
+				idx++;
+				break;
+			case 3:
+				v2+=array_in[n].re;
+				v4+=array_in[n].im;
+				idx++;
+				mul=n*k;
+
+				contr.uniId=1;
+				contr.checkId=0;
+				//		contr.taskId=0;
+				//		contr.executionId=0;
+				//		contr.command=2;
+				contr.AOV[0]=v1;
+				contr.AOV[1]=v2;
+				contr.AOV[2]=v3;
+						contr.AOV[3]=v4;
+				contr.AOV[4]=tmp.re;
+				contr.AOV[5]=tmp.im;
+				contr.AOV[6]=mul;
+
+				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+				//		FAULTDET_Test(&contr);
+				FAULTDET_testPoint(&contr);
+
+				complex_sum(odd_sum,tmp); //192
+
+				idx=0;
+				tmp.im=0;
+				tmp.re=0;
+				break;
+			}
 		}
 
-
-		contr.uniId=1;
-		contr.checkId=k;
-		//		contr.taskId=0;
-		//		contr.executionId=0;
-		//		contr.command=2;
-		contr.AOV[0]=array_in[1].re+array_in[3].re;
-		contr.AOV[1]=array_in[5].re+array_in[7].re;
-		contr.AOV[2]=array_in[1].im+array_in[3].im;
-		contr.AOV[3]=array_in[5].im+array_in[7].im;
-		contr.AOV[4]=odd_sum.re;
-		contr.AOV[5]=odd_sum.im;
-		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-		//		FAULTDET_Test(&contr);
-		FAULTDET_testPoint(&contr);
-
 		complex out=complex_sum(even_sum,odd_sum);
-
-
+		//		complex out2=complex_sum(even_sum,odd_sum);
+		//		if (out!=out2)
+		//			FAULTDET_signalFault();
+#ifndef FAULTDETECTOR_EXECINSW
+		FAULTDET_blockIfFaultDetectedInTask(&contr);
+#endif
 		array_out[k] = out; //192
 	}
-
-
-
-
-	//	for(k=0;k<FFT_LENGTH;k++){
-	//
-	//
-	//		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
-	//		int n;
-	//		complex even_sum,odd_sum;
-	//
-	//		even_sum.re=0;
-	//		even_sum.im=0;
-	//
-	//		//		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+k*LOOP1TOTAL, (32*1)-1+k*LOOP1TOTAL, injectingErrors);
-	//		//		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+k*LOOP1TOTAL, (32*2)-1+k*LOOP1TOTAL, injectingErrors);
-	//
-	//		for(n=0;n<FFT_LENGTH;n=n+2){
-	//			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH)); //192
-	//
-	//			complex_sum(even_sum,n_term); //192
-	//		}
-	//
-	//
-	//		odd_sum.re=0;
-	//		odd_sum.im=0;
-	//
-	//		//		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2)+192*2+k*LOOP1TOTAL, (32*3)-1+192*2+k*LOOP1TOTAL, injectingErrors);
-	//		//		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3)+192*2+k*LOOP1TOTAL, (32*4)-1+192*2+k*LOOP1TOTAL, injectingErrors);
-	//
-	//		for(n=1;n<FFT_LENGTH;n=n+2){
-	//			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH) ); //192
-	//
-	//			complex_sum(odd_sum,n_term); //192
-	//		}
-	//
-	//		array_out[k] = complex_sum(even_sum,odd_sum); //192
-	//	}
-	//
-	//
-	//	contr.uniId=1;
-	//	contr.checkId=0;
-	//	//		contr.taskId=0;
-	//	//		contr.executionId=0;
-	//	//		contr.command=2;
-	//	contr.AOV[0]=array_in[0].re;
-	//	contr.AOV[1]=array_in[0].im;
-	//	contr.AOV[2]=array_in[1].re;
-	//	contr.AOV[3]=array_in[1].im;
-	//	contr.AOV[4]=array_out[0].re;
-	//	contr.AOV[5]=array_out[0].im;
-	//	contr.AOV[6]=array_out[1].re;
-	//	contr.AOV[7]=array_out[1].im;
-	//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//	//		FAULTDET_Test(&contr);
-	//	//	FAULTDET_testPoint(&contr);
 	perf_stop_clock();
 	printf("%u\n", get_clock_L());
 	if (get_clock_U()!=0)
 		printf("err up not 0");
 }
 
+
+
+//	for(k=0;k<FFT_LENGTH;k++){
+//
+//
+//		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
+//		int n;
+//		complex even_sum,odd_sum;
+//
+//		even_sum.re=0;
+//		even_sum.im=0;
+//
+//		//		FAULTDET_testing_injectFault32(even_sum.re, executionId, 32*0+k*LOOP1TOTAL, (32*1)-1+k*LOOP1TOTAL, injectingErrors);
+//		//		FAULTDET_testing_injectFault32(even_sum.im, executionId, 32*1+k*LOOP1TOTAL, (32*2)-1+k*LOOP1TOTAL, injectingErrors);
+//
+//		for(n=0;n<FFT_LENGTH;n=n+2){
+//			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH)); //192
+//
+//			complex_sum(even_sum,n_term); //192
+//		}
+//
+//
+//		odd_sum.re=0;
+//		odd_sum.im=0;
+//
+//		//		FAULTDET_testing_injectFault32(odd_sum.re, executionId, (32*2)+192*2+k*LOOP1TOTAL, (32*3)-1+192*2+k*LOOP1TOTAL, injectingErrors);
+//		//		FAULTDET_testing_injectFault32(odd_sum.im, executionId, (32*3)+192*2+k*LOOP1TOTAL, (32*4)-1+192*2+k*LOOP1TOTAL, injectingErrors);
+//
+//		for(n=1;n<FFT_LENGTH;n=n+2){
+//			complex n_term = complex_mult(array_in[n],complex_exp((-2*M_PI*n*k)/FFT_LENGTH) ); //192
+//
+//			complex_sum(odd_sum,n_term); //192
+//		}
+//
+//		array_out[k] = complex_sum(even_sum,odd_sum); //192
+//	}
+//
+//
+//	contr.uniId=1;
+//	contr.checkId=0;
+//	//		contr.taskId=0;
+//	//		contr.executionId=0;
+//	//		contr.command=2;
+//	contr.AOV[0]=array_in[0].re;
+//	contr.AOV[1]=array_in[0].im;
+//	contr.AOV[2]=array_in[1].re;
+//	contr.AOV[3]=array_in[1].im;
+//	contr.AOV[4]=array_out[0].re;
+//	contr.AOV[5]=array_out[0].im;
+//	contr.AOV[6]=array_out[1].re;
+//	contr.AOV[7]=array_out[1].im;
+//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+//	//		FAULTDET_Test(&contr);
+//	//	FAULTDET_testPoint(&contr);
+//perf_stop_clock();
+//printf("%u\n", get_clock_L());
+//if (get_clock_U()!=0)
+//	printf("err up not 0");
+//}
 static void fft_routine_train(){
 	int k;
+
+	perf_reset_and_start_clock();
 
 	for(k=0;k<FFT_LENGTH;k++){
 
@@ -749,57 +839,129 @@ static void fft_routine_train(){
 		int n;
 		complex even_sum,odd_sum;
 
+		float v1, v2, v3, v4;
+
 		even_sum.re=0;
 		even_sum.im=0;
+
+
+		int idx=0;
+		float mul=0;
+		complex tmp;
+		tmp.im=0;
+		tmp.re=0;
 
 		for(n=0;n<FFT_LENGTH;n=n+2){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
-			complex_sum(even_sum,n_term); //192
+			complex_sum(tmp, n_term); //192
+
+
+			switch(idx) {
+			case 0:
+				v1=array_in[n].re;
+				v3=array_in[n].im;
+				idx++;
+				break;
+			case 1:
+				v1+=array_in[n].re;
+				v3+=array_in[n].im;
+				idx++;
+				break;
+			case 2:
+				v2=array_in[n].re;
+				v4=array_in[n].im;
+				idx++;
+				break;
+			case 3:
+				v2+=array_in[n].re;
+				v4+=array_in[n].im;
+
+				mul=n*k;
+
+
+				FAULTDET_trainPoint(
+						1,
+						0,  //checkId
+						7,
+						&v1, &v2, &v3, &v4, &tmp.re, &tmp.im, &mul);
+
+
+				complex_sum(even_sum,tmp); //192
+
+				idx=0;
+				tmp.im=0;
+				tmp.re=0;
+				break;
+			}
 		}
-
-		float v1=array_in[0].re+array_in[2].re;
-		float v2=array_in[4].re+array_in[6].re;
-		float v3=array_in[0].im+array_in[2].im;
-		float v4=array_in[4].im+array_in[6].im;
-
-		FAULTDET_trainPoint(
-				1,
-				k,  //checkId
-				6,
-				&(v1), &(v2), &(v3), &(v4), &(even_sum.re),  &(even_sum.im));
-
 
 		odd_sum.re=0;
 		odd_sum.im=0;
 
+		idx=0;
+		mul=0;
+
+		tmp.im=0;
+		tmp.re=0;
 
 		for(n=1;n<FFT_LENGTH;n=n+2){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
-			complex_sum(odd_sum,n_term); //192
+			complex_sum(tmp,n_term); //192
+
+			switch(idx) {
+			case 0:
+				v1=array_in[n].re;
+				v3=array_in[n].im;
+				idx++;
+				break;
+			case 1:
+				v1+=array_in[n].re;
+				v3+=array_in[n].im;
+				idx++;
+				break;
+			case 2:
+				v2=array_in[n].re;
+				v4=array_in[n].im;
+				idx++;
+				break;
+			case 3:
+				v2+=array_in[n].re;
+				v4+=array_in[n].im;
+				idx++;
+				mul=n*k;
+
+				FAULTDET_trainPoint(
+						1,
+						0,  //checkId
+						7,
+						&v1, &v2, &v3, &v4, &tmp.re, &tmp.im, &mul);
+
+				complex_sum(odd_sum,tmp); //192
+
+				idx=0;
+				tmp.im=0;
+				tmp.re=0;
+				break;
+			}
 		}
 
-
-		v1=array_in[1].re+array_in[3].re;
-		v2=array_in[5].re+array_in[7].re;
-		v3=array_in[1].im+array_in[3].im;
-		v4=array_in[5].im+array_in[7].im;
-
-		FAULTDET_trainPoint(
-				1,
-				k,  //checkId
-				6,
-				&(v1), &(v2), &(v3), &(v4), &(odd_sum.re),  &(odd_sum.im));
-
-
 		complex out=complex_sum(even_sum,odd_sum);
-
-
+		//		complex out2=complex_sum(even_sum,odd_sum);
+		//		if (out!=out2)
+		//			FAULTDET_signalFault();
+#ifndef FAULTDETECTOR_EXECINSW
+		FAULTDET_blockIfFaultDetectedInTask(&contr);
+#endif
 		array_out[k] = out; //192
 	}
+	//perf_stop_clock();
+	//printf("%u\n", get_clock_L());
+	//if (get_clock_U()!=0)
+	//	printf("err up not 0");
 }
 #endif
 
@@ -1033,7 +1195,7 @@ void latnav_test() {
 	pid_roll.integral_sum     = pid_roll.prev_error     = pid_roll.backpropagation     = 0;
 	pid_heading.integral_sum  = pid_heading.prev_error  = pid_heading.backpropagation  = 0;
 
-	XFaultdetector FAULTDETECTOR_InstancePtr=FAULTDET_getInstancePtr();
+	//	XFaultdetector FAULTDETECTOR_InstancePtr=FAULTDET_getInstancePtr();
 	//	FAULTDETECTOR_controlStr* contr=&contrtmp;
 	//	FAULTDETECTOR_controlStr contr;
 	curr_heading = r1;
@@ -1044,151 +1206,157 @@ void latnav_test() {
 
 
 
-	for(i=0; i<1; i++) {
+	//	for(i=0; i<1; i++) {
 
-		float desired_roll,actual_roll,desired_roll_rate,actual_roll_rate,desired_ailerons,actual_ailerons;
+	float desired_roll,actual_roll,desired_roll_rate,actual_roll_rate,desired_ailerons,actual_ailerons;
 
-		float err=curr_heading-r4;
-		float pid_heading_backpropagation_orig=pid_heading.backpropagation;
-		float err_orig=err;
+	float err=curr_heading-r4;
+	float pid_heading_backpropagation_orig=pid_heading.backpropagation;
+	float err_orig=err;
 
-		desired_roll = run_pid(&pid_heading, err);
-		actual_roll = roll_limiter(desired_roll, 400);
+	desired_roll = run_pid(&pid_heading, err);
+	actual_roll = roll_limiter(desired_roll, 400);
 
 #ifndef FAULTDETECTOR_EXECINSW
-		FAULTDET_blockIfFaultDetectedInTask(&contr);
+	FAULTDET_blockIfFaultDetectedInTask(&contr);
 #endif
 
-		//#ifndef FAULTDETECTOR_EXECINSW
-		////		inst.testedOnce=0xFF;
-		////		inst.lastTest.checkId=0;
-		////		inst.lastTest.executionId=0;
-		////		inst.lastTest.uniId=1;
-		//		contr.uniId=1;
-		//		contr.executionId=0;
-		//		contr.checkId=0;
-		//#endif
+	//#ifndef FAULTDETECTOR_EXECINSW
+	////		inst.testedOnce=0xFF;
+	////		inst.lastTest.checkId=0;
+	////		inst.lastTest.executionId=0;
+	////		inst.lastTest.uniId=1;
+	//		contr.uniId=1;
+	//		contr.executionId=0;
+	//		contr.checkId=0;
+	//#endif
 
-		//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
-		contr.uniId=1;
-		contr.checkId=0;
-		//		contr.taskId=0;
-		//		contr.executionId=0;
-		//		contr.command=2;
-		contr.AOV[0]=pid_heading.backpropagation;
-		contr.AOV[1]=err;
-		contr.AOV[2]=desired_roll;
-		contr.AOV[3]=actual_roll;
-		contr.AOV[4]=0;
-		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-		//		FAULTDET_Test(&contr);
-		FAULTDET_testPoint(&contr);
+	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-
-		pid_heading.backpropagation = actual_roll - desired_roll;
-
-		float pid_roll_backpropagation_orig=pid_roll.backpropagation;
-
-		float err1=curr_roll - actual_roll;
-		float err1_orig=curr_roll - actual_roll;
-		desired_roll_rate = run_pid(&pid_roll, err1);
-
-		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll;
+	//		contr.uniId=1;
+	//		contr.checkId=0;
+	//		//		contr.taskId=0;
+	//		//		contr.executionId=0;
+	//		//		contr.command=2;
+	//		contr.AOV[0]=pid_heading.backpropagation;
+	//		contr.AOV[1]=err;
+	//		contr.AOV[2]=desired_roll;
+	//		contr.AOV[3]=actual_roll;
+	//		contr.AOV[4]=0;
+	//		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		//		FAULTDET_Test(&contr);
+	//		FAULTDET_testPoint(&contr);
 
 
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//		inst.testedOnce=0xFF;
-		//		inst.lastTest.checkId=1;
-		//		inst.lastTest.executionId=0;
-		//		inst.lastTest.uniId=1;
-		//#endif
-		//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+	pid_heading.backpropagation = actual_roll - desired_roll;
 
-		contr.uniId=1;
-		contr.checkId=1;
-		//		contr.taskId=0;
-		//		contr.executionId=0;
-		//		contr.command=2;
-		contr.AOV[0]=pid_roll.backpropagation;
-		contr.AOV[1]=err1;
-		contr.AOV[2]=desired_roll_rate;
-		contr.AOV[3]=actual_roll_rate;
-		contr.AOV[4]=curr_roll;
-		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-		//		FAULTDET_Test(&contr);
-		FAULTDET_testPoint(&contr);
+	float pid_roll_backpropagation_orig=pid_roll.backpropagation;
+
+	float err1=curr_roll - actual_roll;
+	float err1_orig=curr_roll - actual_roll;
+	desired_roll_rate = run_pid(&pid_roll, err1);
+
+	actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll);
 
 
-		pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
-		pid_roll_backpropagation_orig=pid_roll.backpropagation;
+	//#ifndef FAULTDETECTOR_EXECINSW
+	//		inst.testedOnce=0xFF;
+	//		inst.lastTest.checkId=1;
+	//		inst.lastTest.executionId=0;
+	//		inst.lastTest.uniId=1;
+	//#endif
+	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-		float err2=curr_roll_rate - actual_roll_rate;
-		float err2_orig=err2;
-		desired_ailerons = run_pid(&pid_roll, err2);
-		actual_ailerons = ailerons_limiter(desired_ailerons);
-
-
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//		inst.testedOnce=0xFF;
-		//		inst.lastTest.checkId=2;
-		//		inst.lastTest.executionId=0;
-		//		inst.lastTest.uniId=1;
-		//#endif
-
-		//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
-
-		contr.uniId=1;
-		contr.checkId=2;
-		//		contr.taskId=0;
-		//		contr.executionId=0;
-		//		contr.command=2;
-		contr.AOV[0]=pid_roll.backpropagation;
-		contr.AOV[1]=err2;
-		contr.AOV[2]=desired_ailerons;
-		contr.AOV[3]=actual_ailerons;
-		contr.AOV[4]=0;
-		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-		//		FAULTDET_Test(&contr);
-		FAULTDET_testPoint(&contr);
+	//		contr.uniId=1;
+	//		contr.checkId=1;
+	//		//		contr.taskId=0;
+	//		//		contr.executionId=0;
+	//		//		contr.command=2;
+	//		contr.AOV[0]=pid_roll.backpropagation;
+	//		contr.AOV[1]=err1;
+	//		contr.AOV[2]=desired_roll_rate;
+	//		contr.AOV[3]=actual_roll_rate;
+	//		contr.AOV[4]=curr_roll;
+	//		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		//		FAULTDET_Test(&contr);
+	//		FAULTDET_testPoint(&contr);
 
 
-		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
+	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
+	pid_roll_backpropagation_orig=pid_roll.backpropagation;
+
+	float err2=curr_roll_rate - actual_roll_rate;
+	float err2_orig=err2;
+	desired_ailerons = run_pid(&pid_roll, err2);
+	actual_ailerons = ailerons_limiter(desired_ailerons);
 
 
-		//#ifndef FAULTDETECTOR_EXECINSW
-		//		inst.testedOnce=0xFF;
-		//		inst.lastTest.checkId=3;
-		//		inst.lastTest.executionId=0;
-		//		inst.lastTest.uniId=1;
-		//#endif
+	//#ifndef FAULTDETECTOR_EXECINSW
+	//		inst.testedOnce=0xFF;
+	//		inst.lastTest.checkId=2;
+	//		inst.lastTest.executionId=0;
+	//		inst.lastTest.uniId=1;
+	//#endif
 
-		//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-		contr.uniId=1;
-		contr.checkId=3;
-		//		contr.taskId=0;
-		//		contr.executionId=0;
-		//		contr.command=2;
-		contr.AOV[0]=curr_heading;
-		contr.AOV[1]=curr_roll;
-		contr.AOV[2]=curr_roll_rate;
-		contr.AOV[3]=actual_ailerons;
-		contr.AOV[4]=0;
-
-		FAULTDET_testPoint(&contr);
-
-		//		FAULTDET_Test(&contr);
-
-
-		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		contr.uniId=1;
+	//		contr.checkId=2;
+	//		//		contr.taskId=0;
+	//		//		contr.executionId=0;
+	//		//		contr.command=2;
+	//		contr.AOV[0]=pid_roll.backpropagation;
+	//		contr.AOV[1]=err2;
+	//		contr.AOV[2]=desired_ailerons;
+	//		contr.AOV[3]=actual_ailerons;
+	//		contr.AOV[4]=0;
+	//		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		//		FAULTDET_Test(&contr);
+	//		FAULTDET_testPoint(&contr);
 
 
-		/* Just a random plane model*/
+	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
-		curr_heading += curr_roll/10 * TIME_STEP;
-		curr_roll += curr_roll_rate * TIME_STEP;
-		curr_roll_rate += desired_ailerons / 5;
-	}
+
+	//#ifndef FAULTDETECTOR_EXECINSW
+	//		inst.testedOnce=0xFF;
+	//		inst.lastTest.checkId=3;
+	//		inst.lastTest.executionId=0;
+	//		inst.lastTest.uniId=1;
+	//#endif
+
+	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
+
+	contr.uniId=1;
+	contr.checkId=3;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=curr_heading;
+	contr.AOV[1]=curr_roll;
+	contr.AOV[2]=curr_roll_rate;
+	contr.AOV[3]=actual_ailerons;
+	contr.AOV[4]=0;
+
+	FAULTDET_testPoint(&contr);
+
+	//		FAULTDET_Test(&contr);
+
+
+	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+
+
+	/* Just a random plane model*/
+
+#ifndef FAULTDETECTOR_EXECINSW
+	FAULTDET_blockIfFaultDetectedInTask(&contr);
+#endif
+
+	curr_heading += curr_roll/10 * TIME_STEP;
+	curr_roll += curr_roll_rate * TIME_STEP;
+	curr_roll_rate += desired_ailerons / 5;
+
+	//	}
 	perf_stop_clock();
 	printf("%u\n", get_clock_L());
 	if (get_clock_U()!=0)
@@ -1653,8 +1821,8 @@ static void prvTaskFour( void *pvParameters )
 	init_train_data();
 	train_ann_routine();
 
-//	init_test_data();
-//	forward_pass_test_burst(-2);
+	//	init_test_data();
+	//	forward_pass_test_burst(-2);
 
 	for (int i=-15000; i<-1; i++) {
 		init_test_data();
