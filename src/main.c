@@ -24,9 +24,10 @@
 
 //#define FAULTDETECTOR_EXECINSW
 
+#define gaussianBench
 //#define ANNBench
 //#define imgscalingBench
-#define FFTBench
+//#define FFTBench
 //#define latnavBench
 
 #include "simple_random.h"
@@ -179,6 +180,248 @@ static void prvTaskThree( void *pvParameters )
 }
 
 FAULTDETECTOR_controlStr contr;
+
+#ifdef gaussianBench
+
+
+//at least one of them must be even
+#define IMG_HEIGHT 16
+#define IMG_WIDTH 16
+
+#define KERNEL_SIZE 5
+
+#define SIGMA 1.0
+
+#ifndef USER_GAUSS_FILTER
+static unsigned char mat_in[IMG_HEIGHT][IMG_WIDTH];
+static unsigned char mat_out[IMG_HEIGHT][IMG_WIDTH];
+#endif
+
+/* KERNEL_SIZExKERNEL_SIZE gaussian filter with origin in (1,1) */
+static float kernel[KERNEL_SIZE][KERNEL_SIZE];
+
+/**
+ * @brief It generates a KERNEL_SIZE x KERNEL_SIZE gaussian kernel
+ *
+ */
+static void gaussian_kernel_init(){
+	int i,j;
+	float sum=0;
+	for (i = 0; i < KERNEL_SIZE; i++) {
+		for (j = 0; j < KERNEL_SIZE; j++) {
+			float x = i - (KERNEL_SIZE - 1) / 2.0;
+			float y = j - (KERNEL_SIZE - 1) / 2.0;
+			kernel[i][j] =  exp(((pow(x, 2) + pow(y, 2)) / ((2 * pow(SIGMA, 2)))) * (-1));
+			sum += kernel[i][j];
+		}
+	}
+
+	for (i = 0; i < KERNEL_SIZE; i++) {
+		for (j = 0; j < KERNEL_SIZE; j++) {
+			kernel[i][j] /= sum;
+		}
+	}
+}
+
+/**
+ * @brief Performs 2D convolution of KERNEL_SIZExKERNEL_SIZE kernel with mat_in
+ *
+ * @param p_x  center point x coordinate
+ * @param p_y center point y coordinate
+ * @return int result of 2d convolution of kernel centred in mat_in[p_x][p_y]
+ */
+char horizontalAccumulate=0x0;
+float oldtemp;
+float faultdet_vals[KERNEL_SIZE];
+int uniIdCtr=0;
+
+static int convolution2D_train(int p_x, int p_y){
+	int k_r,offset_x,offset_y,i,j;
+	float temp;
+
+	/*Kernel radius*/
+	k_r=KERNEL_SIZE/2;
+
+	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
+	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+		unsigned char res=mat_in[p_x][p_y];
+		return res;
+	}
+	/*offset between kernel's indexes and array's ones*/
+	offset_x=p_x-k_r;
+	offset_y=p_y-k_r;
+
+
+	oldtemp=temp;
+	temp=0;
+
+	if (horizontalAccumulate) {
+		for (int i=0; i<KERNEL_SIZE; i++) {
+			faultdet_vals[i]=0;
+		}
+
+		int loop1ctr=0;
+		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+			int loop2ctr=0;
+			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
+				unsigned char in=mat_in[i][j];
+				float kernelin=kernel[i-offset_x][j-offset_y];
+				temp+=kernelin * in;
+				faultdet_vals[loop2ctr]+=in;
+				loop2ctr++;
+			}
+			loop1ctr++;
+		}
+
+		float out=temp-oldtemp;
+
+		FAULTDET_trainPoint(
+				uniIdCtr/*p_x*IMG_WIDTH+p_y*/,
+				0,  //checkId
+				6,
+				&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
+		uniIdCtr++;
+	} else {
+		int loop1ctr=0;
+		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
+			int loop2ctr=0;
+			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
+				unsigned char in=mat_in[i][j];
+				float kernelin=kernel[i-offset_x][j-offset_y];
+				temp+=kernelin * in;
+				faultdet_vals[loop1ctr]+=in;
+				loop2ctr++;
+			}
+			loop1ctr++;
+		}
+	}
+	horizontalAccumulate=!horizontalAccumulate;
+	return temp;
+}
+
+
+static int convolution2D_test(int p_x, int p_y){
+	int k_r,offset_x,offset_y,i,j;
+	float temp;
+
+	/*Kernel radius*/
+	k_r=KERNEL_SIZE/2;
+
+	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
+	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+		unsigned char res=mat_in[p_x][p_y];
+		return res;
+	}
+	/*offset between kernel's indexes and array's ones*/
+	offset_x=p_x-k_r;
+	offset_y=p_y-k_r;
+
+
+	oldtemp=temp;
+	temp=0;
+
+	if (horizontalAccumulate) {
+		for (int i=0; i<KERNEL_SIZE; i++) {
+			faultdet_vals[i]=0;
+		}
+
+		int loop1ctr=0;
+		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+			int loop2ctr=0;
+			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
+				unsigned char in=mat_in[i][j];
+				float kernelin=kernel[i-offset_x][j-offset_y];
+				temp+=kernelin * in;
+				faultdet_vals[loop2ctr]+=in;
+				loop2ctr++;
+			}
+			loop1ctr++;
+		}
+
+		float out=temp-oldtemp;
+
+
+		contr.uniId=0;
+		contr.checkId=0;
+		//		contr.taskId=0;
+		//		contr.executionId=0;
+		//		contr.command=2;
+		contr.AOV[0]=faultdet_vals[0];
+		contr.AOV[1]=faultdet_vals[1];
+		contr.AOV[2]=faultdet_vals[2];
+		contr.AOV[3]=faultdet_vals[3];
+		contr.AOV[4]=faultdet_vals[4];
+		contr.AOV[4]=out;
+
+		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		//		FAULTDET_Test(&contr);
+		FAULTDET_testPoint(&contr);
+		uniIdCtr++;
+	} else {
+		int loop1ctr=0;
+		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
+			int loop2ctr=0;
+			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
+				unsigned char in=mat_in[i][j];
+				float kernelin=kernel[i-offset_x][j-offset_y];
+				temp+=kernelin * in;
+				faultdet_vals[loop1ctr]+=in;
+				loop2ctr++;
+			}
+			loop1ctr++;
+		}
+	}
+	horizontalAccumulate=!horizontalAccumulate;
+	return temp;
+}
+
+
+/**
+ * @brief Actual gaussian filter implementation
+ *
+ */
+static void gauss_filter_routine_test() {
+
+	horizontalAccumulate=0x0;
+	uniIdCtr=0;
+
+	int i,j;
+
+	for(i=0;i<IMG_HEIGHT;i++){
+		for(j=0;j<IMG_WIDTH;j++){
+			mat_out[i][j]=convolution2D_test(i,j);
+		}
+	}
+
+	if (horizontalAccumulate) {
+		printf("ERROR, HEIGHT OR WIDTH MUST BE EVEN\n");
+	}
+
+#ifndef FAULTDETECTOR_EXECINSW
+	FAULTDET_blockIfFaultDetectedInTask(&contr);
+#endif
+}
+
+static void gauss_filter_routine_train() {
+
+	horizontalAccumulate=0x0;
+	uniIdCtr=0;
+
+	int i,j;
+
+	for(i=0;i<IMG_HEIGHT;i++){
+		for(j=0;j<IMG_WIDTH;j++){
+			mat_out[i][j]=convolution2D_train(i,j);
+		}
+	}
+
+	if (horizontalAccumulate) {
+		printf("ERROR, HEIGHT OR WIDTH MUST BE EVEN\n");
+	}
+}
+
+
+#endif
 
 #ifdef ANNBench
 
@@ -610,7 +853,6 @@ static complex complex_exp(float x){
  */
 
 
-#define LOOP1TOTAL 1280
 static void fft_routine_test(){
 	int k;
 
@@ -735,7 +977,7 @@ static void fft_routine_test(){
 				contr.AOV[0]=v1;
 				contr.AOV[1]=v2;
 				contr.AOV[2]=v3;
-						contr.AOV[3]=v4;
+				contr.AOV[3]=v4;
 				contr.AOV[4]=tmp.re;
 				contr.AOV[5]=tmp.im;
 				contr.AOV[6]=mul;
@@ -1833,6 +2075,22 @@ static void prvTaskFour( void *pvParameters )
 		init_test_data();
 		forward_pass_test_burst_test();
 	}
+#endif
+
+#ifdef gaussianBench
+
+	gaussian_kernel_init();
+
+	for (int i=-300; i<-1; i++) {
+		init_img_matrix();
+		gauss_filter_routine_train();
+	}
+
+	for (int i=0; i<500; i++) {
+		init_img_matrix();
+		gauss_filter_routine_test();
+	}
+
 #endif
 
 #ifdef FFTBench
