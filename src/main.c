@@ -421,6 +421,14 @@ static void gauss_filter_routine_train() {
 }
 
 
+void init_img_matrix() {
+	for (int i = 0; i < IMG_HEIGHT; i++){
+		for (int j = 0; j < IMG_WIDTH; j++){
+			mat_in[i][j]=random_get()*256;
+		}
+	}
+}
+
 #endif
 
 #ifdef ANNBench
