@@ -24,8 +24,8 @@
 
 //#define FAULTDETECTOR_EXECINSW
 
-#define gaussianBench
-//#define ANNBench
+//#define gaussianBench
+#define ANNBench
 //#define imgscalingBench
 //#define FFTBench
 //#define latnavBench
@@ -185,8 +185,8 @@ FAULTDETECTOR_controlStr contr;
 
 
 //at least one of them must be even
-#define IMG_HEIGHT 16
-#define IMG_WIDTH 16
+#define IMG_HEIGHT 32
+#define IMG_WIDTH 32
 
 #define KERNEL_SIZE 5
 
@@ -275,11 +275,21 @@ static int convolution2D_train(int p_x, int p_y){
 
 		float out=temp-oldtemp;
 
-		FAULTDET_trainPoint(
-				uniIdCtr/*p_x*IMG_WIDTH+p_y*/,
-				0,  //checkId
-				6,
-				&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
+		contr.uniId=uniIdCtr;
+		contr.checkId=0;
+		//		contr.taskId=0;
+		//		contr.executionId=0;
+		//		contr.command=2;
+		contr.AOV[0]=faultdet_vals[0];
+		contr.AOV[1]=faultdet_vals[1];
+		contr.AOV[2]=faultdet_vals[2];
+		contr.AOV[3]=faultdet_vals[3];
+		contr.AOV[4]=faultdet_vals[4];
+		contr.AOV[5]=out;
+
+		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		//		FAULTDET_Test(&contr);
+		FAULTDET_trainPoint(&contr);
 		uniIdCtr++;
 	} else {
 		int loop1ctr=0;
@@ -341,7 +351,7 @@ static int convolution2D_test(int p_x, int p_y){
 		float out=temp-oldtemp;
 
 
-		contr.uniId=0;
+		contr.uniId=uniIdCtr;
 		contr.checkId=0;
 		//		contr.taskId=0;
 		//		contr.executionId=0;
@@ -351,7 +361,7 @@ static int convolution2D_test(int p_x, int p_y){
 		contr.AOV[2]=faultdet_vals[2];
 		contr.AOV[3]=faultdet_vals[3];
 		contr.AOV[4]=faultdet_vals[4];
-		contr.AOV[4]=out;
+		contr.AOV[5]=out;
 
 		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 		//		FAULTDET_Test(&contr);
@@ -382,6 +392,8 @@ static int convolution2D_test(int p_x, int p_y){
  */
 static void gauss_filter_routine_test() {
 
+	perf_reset_and_start_clock();
+
 	horizontalAccumulate=0x0;
 	uniIdCtr=0;
 
@@ -400,6 +412,11 @@ static void gauss_filter_routine_test() {
 #ifndef FAULTDETECTOR_EXECINSW
 	FAULTDET_blockIfFaultDetectedInTask(&contr);
 #endif
+
+	perf_stop_clock();
+	printf("%u\n", get_clock_L());
+	if (get_clock_U()!=0)
+		printf("err up not 0");
 }
 
 static void gauss_filter_routine_train() {
@@ -625,11 +642,21 @@ static void forward_pass_test_burst_train(){
 				activation+=(v1*v2);
 			}
 			float out=sigmoid(activation);
-			FAULTDET_trainPoint(
-					b,
-					0,  //ceckId
-					5,
-					&(test_in[b][0]), &(test_in[b][1]), &(test_in[b][2]), &(test_in[b][3]), &(out));
+
+			contr.uniId=b;
+			contr.checkId=0;
+			//		contr.taskId=0;
+			//		contr.executionId=0;
+			//		contr.command=2;
+			contr.AOV[0]=test_in[b][0];
+			contr.AOV[1]=test_in[b][1];
+			contr.AOV[2]=test_in[b][2];
+			contr.AOV[3]=test_in[b][3];
+			contr.AOV[4]=out;
+			//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+			//		FAULTDET_Test(&contr);
+			FAULTDET_trainPoint(&contr);
+
 			test_out[b][y]=out;
 		}
 
@@ -2062,6 +2089,8 @@ static void prvTaskFour( void *pvParameters )
 {
 	xPortSchedulerDisableIntr(); //if uncommented, task will execute continuously
 
+//	printf("hello\n");
+
 	for (int i=0; i<100000; i++) {}
 
 	random_set_seed(1);
@@ -2074,12 +2103,12 @@ static void prvTaskFour( void *pvParameters )
 	//	init_test_data();
 	//	forward_pass_test_burst(-2);
 
-	for (int i=-15000; i<-1; i++) {
+	for (int i=-4000; i<-1; i++) {
 		init_test_data();
 		forward_pass_test_burst_train();
 	}
 
-	for (int i=0; i<5000; i++) {
+	for (int i=0; i<4000; i++) {
 		init_test_data();
 		forward_pass_test_burst_test();
 	}
@@ -2089,12 +2118,12 @@ static void prvTaskFour( void *pvParameters )
 
 	gaussian_kernel_init();
 
-	for (int i=-300; i<-1; i++) {
+	for (int i=-2000; i<-1; i++) {
 		init_img_matrix();
 		gauss_filter_routine_train();
 	}
 
-	for (int i=0; i<500; i++) {
+	for (int i=0; i<4000; i++) {
 		init_img_matrix();
 		gauss_filter_routine_test();
 	}
