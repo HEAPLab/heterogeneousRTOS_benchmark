@@ -22,13 +22,13 @@
 
 #include "perf_timer.h"
 
-//#define FAULTDETECTOR_EXECINSW
+#define FAULTDETECTOR_EXECINSW
 
 //#define gaussianBench
-#define ANNBench
+//#define ANNBench
 //#define imgscalingBench
 //#define FFTBench
-//#define latnavBench
+#define latnavBench
 
 #include "simple_random.h"
 
@@ -1360,79 +1360,100 @@ void latnav_train() {
 	curr_roll_rate = r3;
 
 
-	for(i=0; i<1; i++) {
+	//	for(i=0; i<1; i++) {
 
-		float desired_roll,actual_roll,desired_roll_rate,actual_roll_rate,desired_ailerons,actual_ailerons;
+	float desired_roll,actual_roll,desired_roll_rate,actual_roll_rate,desired_ailerons,actual_ailerons;
 
-		float err=curr_heading-r4;
-		float pid_heading_backpropagation_orig=pid_heading.backpropagation;
-		float err_orig=err;
+	float err=curr_heading-r4;
+	float pid_heading_backpropagation_orig=pid_heading.backpropagation;
+	float err_orig=err;
 
-		desired_roll = run_pid(&pid_heading, err);
-		actual_roll = roll_limiter(desired_roll, 400);
+	desired_roll = run_pid(&pid_heading, err);
+	actual_roll = roll_limiter(desired_roll, 400);
+
+	contr.uniId=1;
+	contr.checkId=0;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=pid_heading.backpropagation;
+	contr.AOV[1]=err;
+	contr.AOV[2]=desired_roll;
+	contr.AOV[3]=actual_roll;
+	contr.AOV[4]=0;
+	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		FAULTDET_Test(&contr);
+	FAULTDET_trainPoint(&contr);
+
+	pid_heading.backpropagation = actual_roll - desired_roll;
+
+	float pid_roll_backpropagation_orig=pid_roll.backpropagation;
+
+	float err1=curr_roll - actual_roll;
+	float err1_orig=curr_roll - actual_roll;
+	desired_roll_rate = run_pid(&pid_roll, err1);
+
+	actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll);
+
+	contr.uniId=1;
+	contr.checkId=1;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=pid_roll.backpropagation;
+	contr.AOV[1]=err1;
+	contr.AOV[2]=desired_roll_rate;
+	contr.AOV[3]=actual_roll_rate;
+	contr.AOV[4]=curr_roll;
+	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		FAULTDET_Test(&contr);
+	FAULTDET_trainPoint(&contr);
+
+	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
+	pid_roll_backpropagation_orig=pid_roll.backpropagation;
+
+	float err2=curr_roll_rate - actual_roll_rate;
+	float err2_orig=err2;
+	desired_ailerons = run_pid(&pid_roll, err2);
+	actual_ailerons = ailerons_limiter(desired_ailerons);
+
+	contr.uniId=1;
+	contr.checkId=2;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=pid_roll.backpropagation;
+	contr.AOV[1]=err2;
+	contr.AOV[2]=desired_ailerons;
+	contr.AOV[3]=actual_ailerons;
+	contr.AOV[4]=0;
+	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		FAULTDET_Test(&contr);
+	FAULTDET_trainPoint(&contr);
+
+	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
-		FAULTDET_trainPoint(
-				1,
-				0,  //checkId
-				4,
-				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-				/*&(pid_heading.b),*/ &(pid_heading.backpropagation), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err, &desired_roll, &actual_roll);//, &actual_roll);
+	contr.uniId=1;
+	contr.checkId=3;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=curr_heading;
+	contr.AOV[1]=curr_roll;
+	contr.AOV[2]=curr_roll_rate;
+	contr.AOV[3]=actual_ailerons;
+	contr.AOV[4]=0;
 
+	FAULTDET_trainPoint(&contr);
 
-		pid_heading.backpropagation = actual_roll - desired_roll;
+	/* Just a random plane model*/
 
-		float pid_roll_backpropagation_orig=pid_roll.backpropagation;
+//	curr_heading += curr_roll/10 * TIME_STEP;
+//	curr_roll += curr_roll_rate * TIME_STEP;
+//	curr_roll_rate += desired_ailerons / 5;
 
-		float err1=curr_roll - actual_roll;
-		float err1_orig=curr_roll - actual_roll;
-		desired_roll_rate = run_pid(&pid_roll, err1);
-
-		actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll);
-
-		FAULTDET_trainPoint(
-				1,
-				1,  //ceckId
-				5,
-				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-				/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
-
-
-		pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
-		pid_roll_backpropagation_orig=pid_roll.backpropagation;
-
-		float err2=curr_roll_rate - actual_roll_rate;
-		float err2_orig=err2;
-		desired_ailerons = run_pid(&pid_roll, err2);
-		actual_ailerons = ailerons_limiter(desired_ailerons);
-
-		FAULTDET_trainPoint(
-				1,
-				2,  //checkId
-				4,
-				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-				/*&(pid_roll.b),*/ &(pid_roll.backpropagation), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
-
-
-		pid_roll.backpropagation = actual_ailerons - desired_ailerons;
-
-
-		FAULTDET_trainPoint(
-				1,
-				3,  //checkId
-				4,
-				/*&(pid_roll.b),*/ &(curr_heading), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ &(curr_roll), &curr_roll_rate, &actual_ailerons);
-
-
-
-
-		/* Just a random plane model*/
-
-		curr_heading += curr_roll/10 * TIME_STEP;
-		curr_roll += curr_roll_rate * TIME_STEP;
-		curr_roll_rate += desired_ailerons / 5;
-
-	}
+	//	}
 	perf_stop_clock();
 	//	clk_count_train_total+=get_clock_L();
 	//	clk_count_train_total_times++;
@@ -1481,8 +1502,6 @@ void latnav_test() {
 
 	perf_reset_and_start_clock();
 
-
-
 	//	for(i=0; i<1; i++) {
 
 	float desired_roll,actual_roll,desired_roll_rate,actual_roll_rate,desired_ailerons,actual_ailerons;
@@ -1494,9 +1513,9 @@ void latnav_test() {
 	desired_roll = run_pid(&pid_heading, err);
 	actual_roll = roll_limiter(desired_roll, 400);
 
-#ifndef FAULTDETECTOR_EXECINSW
-	FAULTDET_blockIfFaultDetectedInTask(&contr);
-#endif
+	//#ifndef FAULTDETECTOR_EXECINSW
+	//	FAULTDET_blockIfFaultDetectedInTask(&contr);
+	//#endif
 
 	//#ifndef FAULTDETECTOR_EXECINSW
 	////		inst.testedOnce=0xFF;
@@ -1510,19 +1529,19 @@ void latnav_test() {
 
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-	//		contr.uniId=1;
-	//		contr.checkId=0;
-	//		//		contr.taskId=0;
-	//		//		contr.executionId=0;
-	//		//		contr.command=2;
-	//		contr.AOV[0]=pid_heading.backpropagation;
-	//		contr.AOV[1]=err;
-	//		contr.AOV[2]=desired_roll;
-	//		contr.AOV[3]=actual_roll;
-	//		contr.AOV[4]=0;
-	//		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		//		FAULTDET_Test(&contr);
-	//		FAULTDET_testPoint(&contr);
+	contr.uniId=1;
+	contr.checkId=0;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=pid_heading.backpropagation;
+	contr.AOV[1]=err;
+	contr.AOV[2]=desired_roll;
+	contr.AOV[3]=actual_roll;
+	contr.AOV[4]=0;
+	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		FAULTDET_Test(&contr);
+	FAULTDET_testPoint(&contr);
 
 
 	pid_heading.backpropagation = actual_roll - desired_roll;
@@ -1544,19 +1563,19 @@ void latnav_test() {
 	//#endif
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-	//		contr.uniId=1;
-	//		contr.checkId=1;
-	//		//		contr.taskId=0;
-	//		//		contr.executionId=0;
-	//		//		contr.command=2;
-	//		contr.AOV[0]=pid_roll.backpropagation;
-	//		contr.AOV[1]=err1;
-	//		contr.AOV[2]=desired_roll_rate;
-	//		contr.AOV[3]=actual_roll_rate;
-	//		contr.AOV[4]=curr_roll;
-	//		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		//		FAULTDET_Test(&contr);
-	//		FAULTDET_testPoint(&contr);
+	contr.uniId=1;
+	contr.checkId=1;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=pid_roll.backpropagation;
+	contr.AOV[1]=err1;
+	contr.AOV[2]=desired_roll_rate;
+	contr.AOV[3]=actual_roll_rate;
+	contr.AOV[4]=curr_roll;
+	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		FAULTDET_Test(&contr);
+	FAULTDET_testPoint(&contr);
 
 
 	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
@@ -1577,19 +1596,19 @@ void latnav_test() {
 
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-	//		contr.uniId=1;
-	//		contr.checkId=2;
-	//		//		contr.taskId=0;
-	//		//		contr.executionId=0;
-	//		//		contr.command=2;
-	//		contr.AOV[0]=pid_roll.backpropagation;
-	//		contr.AOV[1]=err2;
-	//		contr.AOV[2]=desired_ailerons;
-	//		contr.AOV[3]=actual_ailerons;
-	//		contr.AOV[4]=0;
-	//		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		//		FAULTDET_Test(&contr);
-	//		FAULTDET_testPoint(&contr);
+	contr.uniId=1;
+	contr.checkId=2;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=pid_roll.backpropagation;
+	contr.AOV[1]=err2;
+	contr.AOV[2]=desired_ailerons;
+	contr.AOV[3]=actual_ailerons;
+	contr.AOV[4]=0;
+	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		FAULTDET_Test(&contr);
+	FAULTDET_testPoint(&contr);
 
 
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
@@ -1629,9 +1648,9 @@ void latnav_test() {
 	FAULTDET_blockIfFaultDetectedInTask(&contr);
 #endif
 
-	curr_heading += curr_roll/10 * TIME_STEP;
-	curr_roll += curr_roll_rate * TIME_STEP;
-	curr_roll_rate += desired_ailerons / 5;
+//	curr_heading += curr_roll/10 * TIME_STEP;
+//	curr_roll += curr_roll_rate * TIME_STEP;
+//	curr_roll_rate += desired_ailerons / 5;
 
 	//	}
 	perf_stop_clock();
@@ -2089,7 +2108,7 @@ static void prvTaskFour( void *pvParameters )
 {
 	xPortSchedulerDisableIntr(); //if uncommented, task will execute continuously
 
-//	printf("hello\n");
+	//	printf("hello\n");
 
 	for (int i=0; i<100000; i++) {}
 
@@ -2156,7 +2175,7 @@ static void prvTaskFour( void *pvParameters )
 #endif
 
 #ifdef latnavBench
-	for (int i=0; i<25000; i++) {
+	for (int i=0; i<10000; i++) {
 		r1=random_get();
 		r2=random_get();
 		r3=random_get();
@@ -2167,7 +2186,7 @@ static void prvTaskFour( void *pvParameters )
 	contr.executionId=0;
 	contr.taskId=0;
 	contr.uniId=0;
-	for (int i=0; i<50000; i++) {
+	for (int i=0; i<4000; i++) {
 		r1=random_get();
 		r2=random_get();
 		r3=random_get();
