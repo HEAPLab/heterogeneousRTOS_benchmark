@@ -27,8 +27,8 @@
 //#define gaussianBench
 //#define ANNBench
 //#define imgscalingBench
-//#define FFTBench
-#define latnavBench
+#define FFTBench
+//#define latnavBench
 
 #include "simple_random.h"
 
@@ -887,6 +887,9 @@ static complex complex_exp(float x){
  * @return Fourier transform for input array
  */
 
+#define checksNum FAULTDETECTOR_MAX_CHECKS
+int checks_idx[checksNum-1];
+
 
 static void fft_routine_test(){
 	int k;
@@ -940,9 +943,16 @@ static void fft_routine_test(){
 				v4+=array_in[n].im;
 
 				mul=n*k;
+				int chkid=checksNum-1;
+				for (int i=0; i<checksNum-1; i++) {
+					if (mul<=checks_idx[i]){
+						chkid=i;
+						break;
+					}
+				}
 
 				contr.uniId=1;
-				contr.checkId=0;
+				contr.checkId=chkid;
 				//		contr.taskId=0;
 				//		contr.executionId=0;
 				//		contr.command=2;
@@ -952,7 +962,6 @@ static void fft_routine_test(){
 				contr.AOV[3]=v4;
 				contr.AOV[4]=tmp.re;
 				contr.AOV[5]=tmp.im;
-				contr.AOV[6]=mul;
 				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 				//		FAULTDET_Test(&contr);
 				FAULTDET_testPoint(&contr);
@@ -1003,9 +1012,16 @@ static void fft_routine_test(){
 				v4+=array_in[n].im;
 				idx++;
 				mul=n*k;
+				int chkid=checksNum-1;
+				for (int i=0; i<checksNum-1; i++) {
+					if (mul<=checks_idx[i]){
+						chkid=i;
+						break;
+					}
+				}
 
 				contr.uniId=1;
-				contr.checkId=0;
+				contr.checkId=chkid;
 				//		contr.taskId=0;
 				//		contr.executionId=0;
 				//		contr.command=2;
@@ -1015,7 +1031,6 @@ static void fft_routine_test(){
 				contr.AOV[3]=v4;
 				contr.AOV[4]=tmp.re;
 				contr.AOV[5]=tmp.im;
-				contr.AOV[6]=mul;
 
 				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 				//		FAULTDET_Test(&contr);
@@ -1155,15 +1170,30 @@ static void fft_routine_train(){
 				v2+=array_in[n].re;
 				v4+=array_in[n].im;
 
+
 				mul=n*k;
+				int chkid=checksNum-1;
+				for (int i=0; i<checksNum-1; i++) {
+					if (mul<=checks_idx[i]){
+						chkid=i;
+						break;
+					}
+				}
 
-
-				FAULTDET_trainPoint(
-						1,
-						0,  //checkId
-						7,
-						&v1, &v2, &v3, &v4, &tmp.re, &tmp.im, &mul);
-
+				contr.uniId=1;
+				contr.checkId=chkid;
+				//		contr.taskId=0;
+				//		contr.executionId=0;
+				//		contr.command=2;
+				contr.AOV[0]=v1;
+				contr.AOV[1]=v2;
+				contr.AOV[2]=v3;
+				contr.AOV[3]=v4;
+				contr.AOV[4]=tmp.re;
+				contr.AOV[5]=tmp.im;
+				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+				//		FAULTDET_Test(&contr);
+				FAULTDET_trainPoint(&contr);
 
 				complex_sum(even_sum,tmp); //192
 
@@ -1210,12 +1240,29 @@ static void fft_routine_train(){
 				v4+=array_in[n].im;
 				idx++;
 				mul=n*k;
+				int chkid=checksNum-1;
+				for (int i=0; i<checksNum-1; i++) {
+					if (mul<=checks_idx[i]){
+						chkid=i;
+						break;
+					}
+				}
 
-				FAULTDET_trainPoint(
-						1,
-						0,  //checkId
-						7,
-						&v1, &v2, &v3, &v4, &tmp.re, &tmp.im, &mul);
+				contr.uniId=1;
+				contr.checkId=chkid;
+				//		contr.taskId=0;
+				//		contr.executionId=0;
+				//		contr.command=2;
+				contr.AOV[0]=v1;
+				contr.AOV[1]=v2;
+				contr.AOV[2]=v3;
+				contr.AOV[3]=v4;
+				contr.AOV[4]=tmp.re;
+				contr.AOV[5]=tmp.im;
+
+				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+				//		FAULTDET_Test(&contr);
+				FAULTDET_trainPoint(&contr);
 
 				complex_sum(odd_sum,tmp); //192
 
@@ -2150,6 +2197,13 @@ static void prvTaskFour( void *pvParameters )
 #endif
 
 #ifdef FFTBench
+	int step=FFT_LENGTH*FFT_LENGTH/checksNum;
+	int part=0;
+	for (int i=0; i<checksNum-1; i++) {
+		part+=step;
+		checks_idx[i]=part;
+	}
+
 	for (int executionId=-10000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
