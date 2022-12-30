@@ -1,7 +1,7 @@
 //#define latnavBench
-//#define FFTBench
+#define FFTBench
 //#define ANNBench
-#define gaussianBench
+//#define gaussianBench
 
 #define FAULTDETECTOR_EXECINSW
 #define detectionPerformanceMeasurement
@@ -18,8 +18,8 @@ u8 injectingErrors=0;
 #ifdef gaussianBench
 
 //at least one of them must be even
-#define IMG_HEIGHT 16
-#define IMG_WIDTH 16
+#define IMG_HEIGHT 32
+#define IMG_WIDTH 32
 
 #define KERNEL_SIZE 5
 
@@ -657,7 +657,8 @@ static complex complex_exp(float x, int executionId){
  *
  * @return Fourier transform for input array
  */
-
+#define checksNum FAULTDETECTOR_MAX_CHECKS
+int checks_idx[checksNum-1];
 
 #define LOOP2TOTAL (192*2+96+32)
 #define LOOP3TOTAL (LOOP2TOTAL)
@@ -685,7 +686,7 @@ static void fft_routine(int executionId){
 
 
 		int idx=0;
-		float mul=0;
+		int mul=0;
 		complex tmp;
 		tmp.im=0;
 		tmp.re=0;
@@ -719,6 +720,13 @@ static void fft_routine(int executionId){
 				v4+=array_in[n].im;
 
 				mul=n*k;
+				int chkid=checksNum-1;
+				for (int i=0; i<checksNum-1; i++) {
+					if (mul<=checks_idx[i]){
+						chkid=i;
+						break;
+					}
+				}
 
 				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
 				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
@@ -726,24 +734,24 @@ static void fft_routine(int executionId){
 				if (executionId<-1) {
 					FAULTDET_trainPoint(
 							n,
-							0,  //checkId
-							7,
-							&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im), &(mul));
+							chkid,  //checkId
+							6,
+							&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
 				} else {
 					FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
 							&inst,
 #endif
-							1, //uniId
-							0, //checkId
+							n, //uniId
+							chkid, //checkId
 #ifdef detectionPerformanceMeasurement
 							injectingErrors,
 							out0,
 							out1,
 							executionId,
 #endif
-							7, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-							&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im), &(mul));
+							6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+							&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
 				}
 
 				complex_sum(even_sum,tmp, -1); //192
@@ -792,31 +800,38 @@ static void fft_routine(int executionId){
 				v4+=array_in[n].im;
 				idx++;
 				mul=n*k;
+				int chkid=checksNum-1;
+				for (int i=0; i<checksNum-1; i++) {
+					if (mul<=checks_idx[i]){
+						chkid=i;
+						break;
+					}
+				}
 
 				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
 				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
 
 				if (executionId<-1) {
 					FAULTDET_trainPoint(
-							FFT_LENGTH+n,
-							1,  //checkId
-							7,
-							&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im), &(mul));
+							n,
+							chkid,  //checkId
+							6,
+							&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
 				} else {
 					FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
 							&inst,
 #endif
-							FFT_LENGTH+n, //uniId
-							1, //checkId
+							n, //uniId
+							chkid, //checkId
 #ifdef detectionPerformanceMeasurement
 							injectingErrors,
 							out0,
 							out1,
 							executionId,
 #endif
-							7, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-							&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im), &(mul));
+							6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+							&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
 				}
 
 				complex_sum(odd_sum,tmp, -1); //192
@@ -1125,36 +1140,31 @@ void latnav(int executionId) {
 	desired_roll = run_pid(&pid_heading, err, executionId);
 	actual_roll = roll_limiter(desired_roll, 400, executionId-(32*11));
 
-#ifndef FAULTDETECTOR_EXECINSW
-	FAULTDET_blockIfFaultDetectedInTask(&inst);
-#endif
-
-
-	if (executionId<-1) {
-		FAULTDET_trainPoint(
-				1,
-				0,  //checkId
-				4,
-				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
-
-	} else {
-		FAULTDET_testPoint(
-#ifndef FAULTDETECTOR_EXECINSW
-				&inst,
-#endif
-				1, //uniId
-				0, //checkId
-#ifdef detectionPerformanceMeasurement
-				injectingErrors,
-				-1,
-				-1,
-				executionId,
-#endif
-				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
-	}
+//	if (executionId<-1) {
+//		FAULTDET_trainPoint(
+//				1,
+//				0,  //checkId
+//				4,
+//				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+//				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
+//
+//	} else {
+//		FAULTDET_testPoint(
+//#ifndef FAULTDETECTOR_EXECINSW
+//				&inst,
+//#endif
+//				1, //uniId
+//				0, //checkId
+//#ifdef detectionPerformanceMeasurement
+//				injectingErrors,
+//				-1,
+//				-1,
+//				executionId,
+//#endif
+//				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+//				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+//				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
+//	}
 
 	pid_heading.backpropagation = actual_roll - desired_roll;
 
@@ -1166,31 +1176,31 @@ void latnav(int executionId) {
 
 	actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
 
-	if (executionId<-1) {
-		FAULTDET_trainPoint(
-				1,
-				1,  //ceckId
-				5,
-				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
-
-	} else {
-		FAULTDET_testPoint(
-#ifndef FAULTDETECTOR_EXECINSW
-				&inst,
-#endif
-				1, //uniId
-				1, //checkId
-#ifdef detectionPerformanceMeasurement
-				injectingErrors,
-				-1,
-				-1,
-				executionId,
-#endif
-				5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
-	}
+//	if (executionId<-1) {
+//		FAULTDET_trainPoint(
+//				1,
+//				1,  //ceckId
+//				5,
+//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
+//				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
+//
+//	} else {
+//		FAULTDET_testPoint(
+//#ifndef FAULTDETECTOR_EXECINSW
+//				&inst,
+//#endif
+//				1, //uniId
+//				1, //checkId
+//#ifdef detectionPerformanceMeasurement
+//				injectingErrors,
+//				-1,
+//				-1,
+//				executionId,
+//#endif
+//				5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
+//				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
+//	}
 
 	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
 	pid_roll_backpropagation_orig=pid_roll.backpropagation;
@@ -1200,31 +1210,31 @@ void latnav(int executionId) {
 	desired_ailerons = run_pid(&pid_roll, err2, executionId-(32*11)-(32*5)-(32*11)-(32*2));
 	actual_ailerons = ailerons_limiter(desired_ailerons, executionId-(32*11)-(32*5)-(32*11)-(32*2)-(32*11));
 
-	if (executionId<-1) {
-		FAULTDET_trainPoint(
-				1,
-				2,  //checkId
-				4,
-				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
-
-	} else {
-		FAULTDET_testPoint(
-#ifndef FAULTDETECTOR_EXECINSW
-				&inst,
-#endif
-				1, //uniId
-				2, //checkId
-#ifdef detectionPerformanceMeasurement
-				injectingErrors,
-				-1,
-				-1,
-				executionId,
-#endif
-				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
-	}
+//	if (executionId<-1) {
+//		FAULTDET_trainPoint(
+//				1,
+//				2,  //checkId
+//				4,
+//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
+//				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
+//
+//	} else {
+//		FAULTDET_testPoint(
+//#ifndef FAULTDETECTOR_EXECINSW
+//				&inst,
+//#endif
+//				1, //uniId
+//				2, //checkId
+//#ifdef detectionPerformanceMeasurement
+//				injectingErrors,
+//				-1,
+//				-1,
+//				executionId,
+//#endif
+//				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
+//				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
+//	}
 
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
@@ -1278,14 +1288,6 @@ void latnav(int executionId) {
 
 #endif
 
-void init_img_matrix() {
-	for (int i = 0; i < IMG_HEIGHT; i++){
-		for (int j = 0; j < IMG_WIDTH; j++){
-			mat_in[i][j]=random_get()*256;
-		}
-	}
-}
-
 #include <locale.h>
 int main(int argc, char * const argv[])
 {
@@ -1328,7 +1330,7 @@ int main(int argc, char * const argv[])
 	if (regs==0)
 		regs=16;
 	if (trainIter==0)
-		trainIter=200;
+		trainIter=10000;
 
 	setlocale(LC_NUMERIC,"en_US.UTF-8");
 
@@ -1356,16 +1358,17 @@ int main(int argc, char * const argv[])
 #ifdef gaussianBench
 	gaussian_kernel_init();
 
-	for (int i=-300; i<-1; i++) {
+	for (int i=-2000; i<-1; i++) {
 		init_img_matrix();
 		gauss_filter_routine(i);
 	}
 
-	for (int i=0; i<5; i++) {
+	for (int i=0; i<4000; i++) {
 		init_img_matrix();
 
-		for (int executionId=-1 ;executionId<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH; executionId++) {
-//			unsigned int acc=0;
+//		for (int executionId=-1 ;executionId<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH; executionId++) {
+
+			//			unsigned int acc=0;
 //			for (int i = 0; i < IMG_HEIGHT; i++){
 //				for (int j = 0; j < IMG_WIDTH; j++){
 //					acc+=mat_in[i][j];
@@ -1373,11 +1376,23 @@ int main(int argc, char * const argv[])
 //			}
 //			printf("acc: %u", acc);
 
-			gauss_filter_routine(executionId);
+//			gauss_filter_routine(executionId);
+		gauss_filter_routine(-1);
+
 //			printf("%d\n", executionId);
 //			fflush(stdout);
-		}
+
+//					}
+
 		FAULTDET_testing_resetGoldens();
+	}
+
+	void init_img_matrix() {
+		for (int i = 0; i < IMG_HEIGHT; i++){
+			for (int j = 0; j < IMG_WIDTH; j++){
+				mat_in[i][j]=random_get()*256;
+			}
+		}
 	}
 #endif
 
@@ -1389,23 +1404,30 @@ int main(int argc, char * const argv[])
 	//	init_test_data();
 	//	forward_pass_test_burst(-2);
 
-	for (int i=-15000; i<-1; i++) {
+	for (int i=-4000; i<-1; i++) {
 		init_test_data();
 		forward_pass_test_burst(i);
 	}
 
-	for (int i=0; i<5000; i++) {
+	for (int i=0; i<4000; i++) {
 		init_test_data();
 
-		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH; executionId++) {
-			forward_pass_test_burst(executionId);
-		}
+//		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH; executionId++) {
+			forward_pass_test_burst(-1);
+//		}
 		FAULTDET_testing_resetGoldens();
 	}
 #endif
 
 #ifdef FFTBench
-	for (int executionId=-100; executionId<-1; executionId++) {
+	int step=FFT_LENGTH*FFT_LENGTH/checksNum;
+	int part=0;
+	for (int i=0; i<checksNum-1; i++) {
+		part+=step;
+		checks_idx[i]=part;
+	}
+
+	for (int executionId=-1000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1416,7 +1438,7 @@ int main(int argc, char * const argv[])
 		fft_routine(executionId);
 	}
 
-	for (int i=0; i<10; i++) {
+	for (int i=0; i<100; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1448,7 +1470,7 @@ int main(int argc, char * const argv[])
 		r2=random_get();
 		r3=random_get();
 		r4=random_get();
-		for (int executionId=-1 ;executionId<1312/*1503*//*960*/; executionId++) {
+		for (int executionId=-1 ;executionId<0/*1312*/; executionId++) {
 			latnav(executionId);
 		}
 	}

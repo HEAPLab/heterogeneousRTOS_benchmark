@@ -137,20 +137,20 @@ void FAULTDET_testing_commitTmpStatsAndReset(u8 injectingFault) {
 				if (FAULTDET_testing_temp_lastoutputchanged) {
 					FAULTDET_testing_falseNegatives++;
 
-				    float maxErr=FAULTDET_testing_relativeErrors[0];
-				    for (int i=0; i<FAULTDET_testing_relativeErrors_size; i++) {
-				    	if (FAULTDET_testing_relativeErrors[i]>maxErr)
-				    		maxErr=FAULTDET_testing_relativeErrors[i];
-				    }
+					float maxErr=FAULTDET_testing_relativeErrors[0];
+					for (int i=0; i<FAULTDET_testing_relativeErrors_size; i++) {
+						if (FAULTDET_testing_relativeErrors[i]>maxErr)
+							maxErr=FAULTDET_testing_relativeErrors[i];
+					}
 
 					union {
-				        float f;
-				        uint32_t u;
-				    } f2u = { .f = maxErr };
+						float f;
+						uint32_t u;
+					} f2u = { .f = maxErr };
 
 
 
-				    //					if (FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]>0.15f)
+					//					if (FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size-1]>0.15f)
 					//						FAULTDET_testing_falseNegatives_wtolerance++;
 					//					else
 					//						FAULTDET_testing_ok_wtolerance++;
@@ -328,8 +328,10 @@ void FAULTDET_testPoint(
 
 	va_list ap;
 	va_start(ap, argCount);
-	if (argCount>FAULTDETECTOR_MAX_AOV_DIM) //MAX_AOV_DIM
+	if (argCount>FAULTDETECTOR_MAX_AOV_DIM) {
+		printf("ERROR: MAX AOV DIM SIZE EXCEEDED\n");
 		return; //error
+	}
 
 	FAULTDETECTOR_controlStr contr;
 #ifndef detectionPerformanceMeasurement

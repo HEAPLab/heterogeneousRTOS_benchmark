@@ -52,13 +52,19 @@ def main():
             fn_rate=100*fn/total_neg
             fp_rate=100*fp/total_pos
 
+            relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
+            relErrNum = relErrNum.view(dtype=np.float32)
+
+            relErrMean=np.mean(relErrNum)
+            relErrVar=np.var(relErrNum)
+
             """
             precision=tp/total_pos
             scaling_factor=total_pos/total_neg
             recall=tp/(tp+(fn*scaling_factor))
             accuracy=(tp+tn*scaling_factor)/(total_pos+total_neg*scaling_factor)"""
 
-            print(f"regions {regions}, trainIterations {trainIterations}, testIterations {testIterations}\ntot pos {total_pos}, tp {tp}, fp {fp} fp rate {fp_rate} | tot neg {total_neg}, tn {tn}, fn {fn} fn rate {fn_rate}\n") #| precision {precision}, recall {recall}, accuracy {accuracy}\n")
+            print(f"regions {regions}, trainIterations {trainIterations}, testIterations {testIterations}\ntot pos {total_pos}, tp {tp}, fp {fp} fp rate {fp_rate} | tot neg {total_neg}, tn {tn}, fn {fn} fn rate {fn_rate} | rel err mean: {relErrMean} var: {relErrVar}\n") #| precision {precision}, recall {recall}, accuracy {accuracy}\n")
             
             #for charts generation
             regions_x.append(regions)
@@ -69,11 +75,9 @@ def main():
             regions_fn_rate.append(fn*100/total_neg)
 
             if (trainIterations==int(args.train) and regions==int(args.regions)):
-                relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
-                #relErrNum = np.zeros(len(record["relerr"]), dtype=np.uint32)
-                relErrNum = relErrNum.view(dtype=np.float32)
+                #relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
+                #relErrNum = relErrNum.view(dtype=np.float32)
                 fn_withthresh[0]=fn
-                #print(fn)
                 total_neg_tresh=tn+len(relErrNum)
                 if (total_neg!=total_neg_tresh):
                     print("ERROR! total_neg!=total_neg_tresh")
