@@ -573,7 +573,7 @@ static void train_ann_routine(){
 #endif
 
 #define FFT_LENGTH 512
-#define CHECKPERIODICITY 64
+#define CHECKPERIODICITY 16
 
 typedef struct{
 	float re,im;
@@ -759,7 +759,7 @@ static void fft_routine(int executionId, int k){
 								&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
 					}
 
-					complex_sum(odd_sum,tmp, -1); //192
+					complex_sum(even_sum,tmp, -1); //192
 
 					idx=0;
 					tmp.im=0;
@@ -866,8 +866,8 @@ static void fft_routine(int executionId, int k){
 
 		complex out=complex_sum(even_sum,odd_sum, -10);
 
-		FAULTDET_testing_manual_compare_n_result(out.re, k);
-		FAULTDET_testing_manual_compare_n_result(out.im, k);
+		FAULTDET_testing_manual_compare_n_result(k, out.re);
+		FAULTDET_testing_manual_compare_n_result(k, out.im);
 
 		array_out[k] = out;
 		//		}
@@ -1651,7 +1651,7 @@ int main(int argc, char * const argv[])
 		checks_idx[i]=part;
 	}
 
-	for (int executionId=-1000; executionId<-1; executionId++) {
+	for (int executionId=-15000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1662,7 +1662,7 @@ int main(int argc, char * const argv[])
 		fft_routine(executionId, 0);
 	}
 
-	for (int i=0; i<50; i++) {
+	for (int i=0; i<1; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
