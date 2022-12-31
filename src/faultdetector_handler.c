@@ -1,6 +1,7 @@
 #include "faultdetector_handler.h"
 #include <stdarg.h>
 #include <string.h>
+#include <stdio.h>
 
 
 void FAULTDET_hotUpdateRegions(FAULTDETECTOR_region_t trainedRegions[FAULTDETECTOR_MAX_CHECKS][FAULTDETECTOR_MAX_REGIONS], u8 n_regions[FAULTDETECTOR_MAX_CHECKS]) {
@@ -94,17 +95,15 @@ void FAULTDET_testing_blockUntilProcessed (FAULTDET_ExecutionDescriptor* instanc
 	}
 }
 #endif
-#define GOLDEN_RESULT_SIZE 32768
+#define GOLDEN_RESULT_SIZE 65536
+#define GOLDEN_MANUAL_RESULT_SIZE GOLDEN_RESULT_SIZE
 static int FAULTDET_testing_goldenResults_size=0;
 static int FAULTDET_testing_goldenResults_idx_tmp=0;
+static int FAULTDET_testing_manual_goldenResults_size=0;
+static int FAULTDET_testing_manual_currGolden=0;
 
 FAULTDETECTOR_testpointDescriptorStr FAULTDET_testing_goldenResults[GOLDEN_RESULT_SIZE];
-
-void FAULTDET_testing_resetGoldens () {
-	FAULTDET_testing_goldenResults_size=0;
-	FAULTDET_testing_goldenResults_idx_tmp=0;
-}
-
+float FAULTDET_testing_manual_golden[GOLDEN_RESULT_SIZE];
 static float FAULTDET_testing_relativeErrors[GOLDEN_RESULT_SIZE*FAULTDETECTOR_MAX_AOV_DIM];
 static int FAULTDET_testing_relativeErrors_size=0;
 
@@ -120,11 +119,55 @@ static int FAULTDET_testing_falseNegatives_wtolerance=0;
 static int FAULTDET_testing_ok_wtolerance=0;
 
 static char FAULTDET_testing_temp_aovchanged=0;
-static char FAULTDET_testing_temp_faultdetected=0;
 static char FAULTDET_testing_temp_lastoutputchanged=0;
+
+void FAULTDET_testing_manual_result(float value, char injectingFaults) {
+	if (injectingFaults) {
+		if (value!=FAULTDET_testing_manual_golden[FAULTDET_testing_manual_currGolden]) {
+			float relErr=fabs(value - FAULTDET_testing_manual_golden[FAULTDET_testing_manual_currGolden])/fabs(FAULTDET_testing_manual_golden[FAULTDET_testing_manual_currGolden]);
+			FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size]=relErr;
+			FAULTDET_testing_relativeErrors_size++;
+
+			//			FAULTDET_testing_temp_aovchanged=0xFF;
+			FAULTDET_testing_temp_lastoutputchanged=0xFF;
+		}
+		FAULTDET_testing_manual_currGolden++;
+	} else {
+		if (FAULTDET_testing_manual_goldenResults_size<=GOLDEN_MANUAL_RESULT_SIZE) {
+			FAULTDET_testing_manual_golden[FAULTDET_testing_manual_goldenResults_size]=value;
+			FAULTDET_testing_manual_goldenResults_size++;
+		} else {
+			printf("ERROR: max manual golden results size exceeded");
+		}
+	}
+}
+
+void FAULTDET_testing_manual_compare_n_result (int n, float value) {
+	if (value!=FAULTDET_testing_manual_golden[n]) {
+		float relErr=fabs(value - FAULTDET_testing_manual_golden[n])/fabs(FAULTDET_testing_manual_golden[n]);
+		FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size]=relErr;
+		FAULTDET_testing_relativeErrors_size++;
+
+		//			FAULTDET_testing_temp_aovchanged=0xFF;
+		FAULTDET_testing_temp_lastoutputchanged=0xFF;
+	}
+}
+
+void FAULTDET_testing_resetGoldens () {
+	FAULTDET_testing_goldenResults_size=0;
+	FAULTDET_testing_goldenResults_idx_tmp=0;
+
+	FAULTDET_testing_manual_goldenResults_size=0;
+	FAULTDET_testing_manual_currGolden=0;
+}
+
+
+
 
 void FAULTDET_testing_commitTmpStatsAndReset(u8 injectingFault) {
 #ifndef csvOut
+	FAULTDET_testing_loggin_faultdetected=FAULTDET_testing_temp_faultdetected;
+
 	if (injectingFault) {
 		FAULTDET_testing_total++;
 
@@ -161,6 +204,8 @@ void FAULTDET_testing_commitTmpStatsAndReset(u8 injectingFault) {
 						printf("%u", f2u.u);
 					else
 						printf(",%u", f2u.u);
+
+					fflush(stdout);
 				} else {
 					FAULTDET_testing_ok++;
 					//FAULTDET_testing_ok_wtolerance++;
@@ -178,6 +223,8 @@ void FAULTDET_testing_commitTmpStatsAndReset(u8 injectingFault) {
 		}
 	}
 	FAULTDET_testing_relativeErrors_size=0;
+	FAULTDET_testing_manual_currGolden=0;
+
 
 	FAULTDET_testing_temp_faultdetected=0;
 	FAULTDET_testing_temp_aovchanged=0;

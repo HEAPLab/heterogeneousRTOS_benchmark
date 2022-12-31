@@ -46,6 +46,15 @@ void FAULTDET_testPoint(
 void FAULTDET_resetFault() PRIVILEGED_FUNCTION;
 
 #ifdef detectionPerformanceMeasurement
+
+//float FAULTDET_testing_manual_getNextGolden() PRIVILEGED_FUNCTION;
+//void FAULTDET_testing_manual_setNextGolden(float golden) PRIVILEGED_FUNCTION;
+//void FAULTDET_testing_manual_resetGoldens();
+//void FAULTDET_testing_manual_compareNextGolden(float toTest);
+void FAULTDET_testing_manual_result (float value, char injectingFaults) PRIVILEGED_FUNCTION;
+void FAULTDET_testing_manual_compare_n_result (int n, float value) PRIVILEGED_FUNCTION;
+unsigned char FAULTDET_testing_loggin_faultdetected;
+unsigned char FAULTDET_testing_temp_faultdetected;
 void FAULTDET_testing_resetGoldens () PRIVILEGED_FUNCTION;
 int FAULTDET_testing_getTotal() PRIVILEGED_FUNCTION;
 int FAULTDET_testing_getOk() PRIVILEGED_FUNCTION;

@@ -79,22 +79,22 @@ static int convolution2D(int p_x, int p_y, int executionId){
 	/*Kernel radius*/
 	k_r=KERNEL_SIZE/2;
 
-//	FAULTDET_testing_injectFault32(p_x, executionId, 32*0, injectingErrors);
-//	FAULTDET_testing_injectFault32(p_y, executionId, 32*1, injectingErrors);
-//	FAULTDET_testing_injectFault32(k_r, executionId, 32*0, injectingErrors);
+	//	FAULTDET_testing_injectFault32(p_x, executionId, 32*0, injectingErrors);
+	//	FAULTDET_testing_injectFault32(p_y, executionId, 32*1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(k_r, executionId, 32*0, injectingErrors);
 
 	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
 	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
 		unsigned char res=mat_in[p_x][p_y];
-//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
+		//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
 		return res;
 	}
 	/*offset between kernel's indexes and array's ones*/
 	offset_x=p_x-k_r;
 	offset_y=p_y-k_r;
 
-//	FAULTDET_testing_injectFault32(offset_x, executionId, 32*1+8*1, injectingErrors);
-//	FAULTDET_testing_injectFault32(offset_y, executionId, 32*2+8*1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(offset_x, executionId, 32*1+8*1, injectingErrors);
+	//	FAULTDET_testing_injectFault32(offset_y, executionId, 32*2+8*1, injectingErrors);
 
 	oldtemp=temp;
 	temp=0;
@@ -211,10 +211,10 @@ static void gauss_filter_routine(int executionId){
 
 	for(i=0;i<IMG_HEIGHT;i++){
 		for(j=0;j<IMG_WIDTH;j++){
-//			if (executionId==95203) {
-//				printf("pippo");
-//				printf("i: %d, j: %d\n", i, j);
-//			}
+			//			if (executionId==95203) {
+			//				printf("pippo");
+			//				printf("i: %d, j: %d\n", i, j);
+			//			}
 
 			mat_out[i][j]=convolution2D(i,j, executionId - (CONVOLUTIONTOTAL*(i*IMG_WIDTH+j)));
 		}
@@ -572,7 +572,9 @@ static void train_ann_routine(){
 #define M_PI 3.14159265358979323846
 #endif
 
-#define FFT_LENGTH 16
+#define FFT_LENGTH 512
+#define CHECKPERIODICITY 64
+
 typedef struct{
 	float re,im;
 } complex;
@@ -664,26 +666,33 @@ int checks_idx[checksNum-1];
 #define LOOP3TOTAL (LOOP2TOTAL)
 #define LOOP1TOTAL (((int)((FFT_LENGTH-1)/2))*LOOP3TOTAL+((int)(FFT_LENGTH/2))*LOOP2TOTAL)
 
-static void fft_routine(int executionId){
-	int k;
+complex odd_sum_golden;
+complex even_sum_golden;
+
+static void fft_routine(int executionId, int k){
+	FAULTDET_testing_temp_faultdetected=0;
+
 
 	if (executionId>=0)
 		injectingErrors=0xFF;
 	else
 		injectingErrors=0x0;
 
-	for(k=0;k<FFT_LENGTH;k++){ //LOOP1TOTAL
+	if (executionId>=0) {
 
+		//		for(k=0;k<FFT_LENGTH;k++){ //LOOP1TOTAL
 
 		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
 		int n;
 		complex even_sum,odd_sum;
 
-		float v1, v2, v3, v4;
+		float v1=0;
+		float v2=0;
+		float v3=0;
+		float v4=0;
 
 		even_sum.re=0;
 		even_sum.im=0;
-
 
 		int idx=0;
 		int mul=0;
@@ -691,76 +700,83 @@ static void fft_routine(int executionId){
 		tmp.im=0;
 		tmp.re=0;
 
-		for(n=0;n<FFT_LENGTH;n=n+2){ //LOOP2TOTAL
-			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)(n/2))*LOOP2TOTAL+k*LOOP1TOTAL)); //96
-			complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)(n/2))*LOOP2TOTAL+k*LOOP1TOTAL)); //192
+		if (executionId<LOOP1TOTAL/2) {
+			for(n=0;n<FFT_LENGTH && !FAULTDET_testing_temp_faultdetected;n=n+2){ //LOOP2TOTAL
+				complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //96
+				complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
 
-			complex_sum(tmp, n_term,  executionId - (96+192+((int)(n/2))*LOOP2TOTAL+k*LOOP1TOTAL)); //192
+				complex_sum(tmp, n_term,  executionId - (96+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
 
-			FAULTDET_testing_injectFault32(tmp, executionId, 32*0+(96+192+192+((int)(n/2))*LOOP2TOTAL+k*LOOP1TOTAL), injectingErrors);
+				FAULTDET_testing_injectFault32(tmp, executionId, 32*0+(96+192+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/), injectingErrors);
 
-			switch(idx) {
-			case 0:
-				v1=array_in[n].re;
-				v3=array_in[n].im;
-				idx++;
-				break;
-			case 1:
-				v1+=array_in[n].re;
-				v3+=array_in[n].im;
-				idx++;
-				break;
-			case 2:
-				v2=array_in[n].re;
-				v4=array_in[n].im;
-				idx++;
-				break;
-			case 3:
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
+				//			if (isnan(v2))
+				//				printf("isnan");
 
-				mul=n*k;
-				int chkid=checksNum-1;
-				for (int i=0; i<checksNum-1; i++) {
-					if (mul<=checks_idx[i]){
-						chkid=i;
-						break;
+				if (idx<CHECKPERIODICITY/2) {
+					v1+=array_in[n].re;
+					v3+=array_in[n].im;
+					idx++;
+				} else if (idx==CHECKPERIODICITY-1) {
+					v2+=array_in[n].re;
+					v4+=array_in[n].im;
+
+					mul=n*k;
+					int chkid=checksNum-1;
+					for (int i=0; i<checksNum-1; i++) {
+						if (mul<=checks_idx[i]){
+							chkid=i;
+							break;
+						}
 					}
-				}
 
-				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
-				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
+					//				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
+					//				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
 
-				if (executionId<-1) {
-					FAULTDET_trainPoint(
-							n,
-							chkid,  //checkId
-							6,
-							&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
-				} else {
-					FAULTDET_testPoint(
+					if (isnan(v2))
+						printf("isnan");
+
+
+					if (executionId<-1) {
+						FAULTDET_trainPoint(
+								n,
+								chkid,  //checkId
+								6,
+								&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
+					} else {
+						FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
-							&inst,
+								&inst,
 #endif
-							n, //uniId
-							chkid, //checkId
+								n, //uniId
+								chkid, //checkId
 #ifdef detectionPerformanceMeasurement
-							injectingErrors,
-							out0,
-							out1,
-							executionId,
+								injectingErrors,
+								-1,
+								-1,
+								executionId,
 #endif
-							6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-							&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
+								6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+								&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
+					}
+
+					complex_sum(odd_sum,tmp, -1); //192
+
+					idx=0;
+					tmp.im=0;
+					tmp.re=0;
+
+					v1=0;
+					v2=0;
+					v3=0;
+					v4=0;
+				} else {
+					v2+=array_in[n].re;
+					v4+=array_in[n].im;
+					idx++;
 				}
-
-				complex_sum(even_sum,tmp, -1); //192
-
-				idx=0;
-				tmp.im=0;
-				tmp.re=0;
-				break;
 			}
+		} else {
+			even_sum=even_sum_golden;
 		}
 
 		odd_sum.re=0;
@@ -771,82 +787,290 @@ static void fft_routine(int executionId){
 
 		tmp.im=0;
 		tmp.re=0;
-		for(n=1;n<FFT_LENGTH;n=n+2){ //LOOP3TOTAL
-			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL) ); //96
-			complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL) ); //192
+		if (executionId<LOOP1TOTAL/2) {
+			for(n=1;n<FFT_LENGTH && !FAULTDET_testing_temp_faultdetected;n=n+2){ //LOOP3TOTAL
+				complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/) ); //96
+				complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/) ); //192
 
-			complex_sum(tmp,n_term,  executionId - (192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL)); //192
+				complex_sum(tmp,n_term,  executionId - (192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
 
-			FAULTDET_testing_injectFault32(tmp, executionId, (192+192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL+k*LOOP1TOTAL), injectingErrors);
+				FAULTDET_testing_injectFault32(tmp, executionId, (192+192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/), injectingErrors);
 
-			switch(idx) {
-			case 0:
-				v1=array_in[n].re;
-				v3=array_in[n].im;
-				idx++;
-				break;
-			case 1:
-				v1+=array_in[n].re;
-				v3+=array_in[n].im;
-				idx++;
-				break;
-			case 2:
-				v2=array_in[n].re;
-				v4=array_in[n].im;
-				idx++;
-				break;
-			case 3:
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
-				idx++;
-				mul=n*k;
-				int chkid=checksNum-1;
-				for (int i=0; i<checksNum-1; i++) {
-					if (mul<=checks_idx[i]){
-						chkid=i;
-						break;
+
+
+				if (idx<CHECKPERIODICITY/2) {
+					v1+=array_in[n].re;
+					v3+=array_in[n].im;
+					idx++;
+				} else if (idx==CHECKPERIODICITY-1) {
+					v2+=array_in[n].re;
+					v4+=array_in[n].im;
+
+					mul=n*k;
+					int chkid=checksNum-1;
+					for (int i=0; i<checksNum-1; i++) {
+						if (mul<=checks_idx[i]){
+							chkid=i;
+							break;
+						}
 					}
-				}
 
-				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
-				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
+					//				if (isnan(v2))
+					//					printf("isnan");
 
-				if (executionId<-1) {
-					FAULTDET_trainPoint(
-							n,
-							chkid,  //checkId
-							6,
-							&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
-				} else {
-					FAULTDET_testPoint(
+					//				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
+					//				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
+
+					if (executionId<-1) {
+						FAULTDET_trainPoint(
+								n,
+								chkid,  //checkId
+								6,
+								&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
+					} else {
+						FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
-							&inst,
+								&inst,
 #endif
-							n, //uniId
-							chkid, //checkId
+								n, //uniId
+								chkid, //checkId
 #ifdef detectionPerformanceMeasurement
-							injectingErrors,
-							out0,
-							out1,
-							executionId,
+								injectingErrors,
+								-1,
+								-1,
+								executionId,
 #endif
-							6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-							&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
+								6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+								&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
+					}
+
+					complex_sum(odd_sum,tmp, -1); //192
+
+					idx=0;
+					tmp.im=0;
+					tmp.re=0;
+
+					v1=0;
+					v2=0;
+					v3=0;
+					v4=0;
+				} else {
+					v2+=array_in[n].re;
+					v4+=array_in[n].im;
+					idx++;
 				}
-
-				complex_sum(odd_sum,tmp, -1); //192
-
-				idx=0;
-				tmp.im=0;
-				tmp.re=0;
-				break;
 			}
+		} else {
+			odd_sum=odd_sum_golden;
 		}
 
 		complex out=complex_sum(even_sum,odd_sum, -10);
 
+		FAULTDET_testing_manual_compare_n_result(out.re, k);
+		FAULTDET_testing_manual_compare_n_result(out.im, k);
+
 		array_out[k] = out;
+		//		}
+
+	} else {
+
+
+		for(k=0;k<FFT_LENGTH;k++){ //LOOP1TOTAL
+
+
+
+			/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
+			int n;
+			complex even_sum,odd_sum;
+
+			float v1=0;
+			float v2=0;
+			float v3=0;
+			float v4=0;
+
+			even_sum.re=0;
+			even_sum.im=0;
+
+
+			int idx=0;
+			int mul=0;
+			complex tmp;
+			tmp.im=0;
+			tmp.re=0;
+
+			for(n=0;n<FFT_LENGTH;n=n+2){ //LOOP2TOTAL
+				complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //96
+				complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
+
+				complex_sum(tmp, n_term,  executionId - (96+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
+
+				FAULTDET_testing_injectFault32(tmp, executionId, 32*0+(96+192+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/), injectingErrors);
+
+				//			if (isnan(v2))
+				//				printf("isnan");
+
+				if (idx<CHECKPERIODICITY/2) {
+					v1+=array_in[n].re;
+					v3+=array_in[n].im;
+					idx++;
+				} else if (idx==CHECKPERIODICITY-1) {
+					v2+=array_in[n].re;
+					v4+=array_in[n].im;
+
+					mul=n*k;
+					int chkid=checksNum-1;
+					for (int i=0; i<checksNum-1; i++) {
+						if (mul<=checks_idx[i]){
+							chkid=i;
+							break;
+						}
+					}
+
+					//				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
+					//				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
+
+					if (isnan(v2))
+						printf("isnan");
+
+
+					if (executionId<-1) {
+						FAULTDET_trainPoint(
+								n,
+								chkid,  //checkId
+								6,
+								&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
+					} else {
+						FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+								&inst,
+#endif
+								n, //uniId
+								chkid, //checkId
+#ifdef detectionPerformanceMeasurement
+								injectingErrors,
+								-1,
+								-1,
+								executionId,
+#endif
+								6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+								&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
+					}
+
+					complex_sum(even_sum,tmp, -1); //192
+
+					idx=0;
+					tmp.im=0;
+					tmp.re=0;
+
+					v1=0;
+					v2=0;
+					v3=0;
+					v4=0;
+				} else {
+					v2+=array_in[n].re;
+					v4+=array_in[n].im;
+					idx++;
+				}
+			}
+
+			even_sum_golden=even_sum;
+
+			odd_sum.re=0;
+			odd_sum.im=0;
+
+			idx=0;
+			mul=0;
+
+			tmp.im=0;
+			tmp.re=0;
+			for(n=1;n<FFT_LENGTH;n=n+2){ //LOOP3TOTAL
+				complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/) ); //96
+				complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/) ); //192
+
+				complex_sum(tmp,n_term,  executionId - (192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
+
+				FAULTDET_testing_injectFault32(tmp, executionId, (192+192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/), injectingErrors);
+
+
+
+				if (idx<CHECKPERIODICITY/2) {
+					v1+=array_in[n].re;
+					v3+=array_in[n].im;
+					idx++;
+				} else if (idx==CHECKPERIODICITY-1) {
+					v2+=array_in[n].re;
+					v4+=array_in[n].im;
+
+					mul=n*k;
+					int chkid=checksNum-1;
+					for (int i=0; i<checksNum-1; i++) {
+						if (mul<=checks_idx[i]){
+							chkid=i;
+							break;
+						}
+					}
+
+					//				if (isnan(v2))
+					//					printf("isnan");
+
+					//				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
+					//				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
+
+					if (executionId<-1) {
+						FAULTDET_trainPoint(
+								n,
+								chkid,  //checkId
+								6,
+								&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
+					} else {
+						FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+								&inst,
+#endif
+								n, //uniId
+								chkid, //checkId
+#ifdef detectionPerformanceMeasurement
+								injectingErrors,
+								-1,
+								-1,
+								executionId,
+#endif
+								6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+								&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
+					}
+
+					complex_sum(odd_sum,tmp, -1); //192
+
+					idx=0;
+					tmp.im=0;
+					tmp.re=0;
+
+					v1=0;
+					v2=0;
+					v3=0;
+					v4=0;
+				} else {
+					v2+=array_in[n].re;
+					v4+=array_in[n].im;
+					idx++;
+				}
+			}
+
+			odd_sum_golden=odd_sum;
+
+			complex out=complex_sum(even_sum,odd_sum, -10);
+
+			if (executionId>=-1) {
+				FAULTDET_testing_manual_result(out.re, injectingErrors);
+				FAULTDET_testing_manual_result(out.im, injectingErrors);
+			}
+
+			array_out[k] = out;
+		}
+
+
 	}
+
 	if (executionId>=-1) {
 		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
 	}
@@ -1140,31 +1364,31 @@ void latnav(int executionId) {
 	desired_roll = run_pid(&pid_heading, err, executionId);
 	actual_roll = roll_limiter(desired_roll, 400, executionId-(32*11));
 
-//	if (executionId<-1) {
-//		FAULTDET_trainPoint(
-//				1,
-//				0,  //checkId
-//				4,
-//				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-//				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
-//
-//	} else {
-//		FAULTDET_testPoint(
-//#ifndef FAULTDETECTOR_EXECINSW
-//				&inst,
-//#endif
-//				1, //uniId
-//				0, //checkId
-//#ifdef detectionPerformanceMeasurement
-//				injectingErrors,
-//				-1,
-//				-1,
-//				executionId,
-//#endif
-//				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-//				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-//				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
-//	}
+	//	if (executionId<-1) {
+	//		FAULTDET_trainPoint(
+	//				1,
+	//				0,  //checkId
+	//				4,
+	//				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+	//				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
+	//
+	//	} else {
+	//		FAULTDET_testPoint(
+	//#ifndef FAULTDETECTOR_EXECINSW
+	//				&inst,
+	//#endif
+	//				1, //uniId
+	//				0, //checkId
+	//#ifdef detectionPerformanceMeasurement
+	//				injectingErrors,
+	//				-1,
+	//				-1,
+	//				executionId,
+	//#endif
+	//				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+	//				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+	//				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
+	//	}
 
 	pid_heading.backpropagation = actual_roll - desired_roll;
 
@@ -1176,31 +1400,31 @@ void latnav(int executionId) {
 
 	actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
 
-//	if (executionId<-1) {
-//		FAULTDET_trainPoint(
-//				1,
-//				1,  //ceckId
-//				5,
-//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-//				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
-//
-//	} else {
-//		FAULTDET_testPoint(
-//#ifndef FAULTDETECTOR_EXECINSW
-//				&inst,
-//#endif
-//				1, //uniId
-//				1, //checkId
-//#ifdef detectionPerformanceMeasurement
-//				injectingErrors,
-//				-1,
-//				-1,
-//				executionId,
-//#endif
-//				5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
-//				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
-//	}
+	//	if (executionId<-1) {
+	//		FAULTDET_trainPoint(
+	//				1,
+	//				1,  //ceckId
+	//				5,
+	//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
+	//				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
+	//
+	//	} else {
+	//		FAULTDET_testPoint(
+	//#ifndef FAULTDETECTOR_EXECINSW
+	//				&inst,
+	//#endif
+	//				1, //uniId
+	//				1, //checkId
+	//#ifdef detectionPerformanceMeasurement
+	//				injectingErrors,
+	//				-1,
+	//				-1,
+	//				executionId,
+	//#endif
+	//				5, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+	//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err1_orig, &desired_roll_rate);//, &actual_roll_rate);
+	//				&(pid_roll.backpropagation), &err1, &desired_roll_rate, &actual_roll_rate, &curr_roll);//, &actual_roll_rate);
+	//	}
 
 	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
 	pid_roll_backpropagation_orig=pid_roll.backpropagation;
@@ -1210,31 +1434,31 @@ void latnav(int executionId) {
 	desired_ailerons = run_pid(&pid_roll, err2, executionId-(32*11)-(32*5)-(32*11)-(32*2));
 	actual_ailerons = ailerons_limiter(desired_ailerons, executionId-(32*11)-(32*5)-(32*11)-(32*2)-(32*11));
 
-//	if (executionId<-1) {
-//		FAULTDET_trainPoint(
-//				1,
-//				2,  //checkId
-//				4,
-//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-//				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
-//
-//	} else {
-//		FAULTDET_testPoint(
-//#ifndef FAULTDETECTOR_EXECINSW
-//				&inst,
-//#endif
-//				1, //uniId
-//				2, //checkId
-//#ifdef detectionPerformanceMeasurement
-//				injectingErrors,
-//				-1,
-//				-1,
-//				executionId,
-//#endif
-//				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
-//				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
-//	}
+	//	if (executionId<-1) {
+	//		FAULTDET_trainPoint(
+	//				1,
+	//				2,  //checkId
+	//				4,
+	//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
+	//				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
+	//
+	//	} else {
+	//		FAULTDET_testPoint(
+	//#ifndef FAULTDETECTOR_EXECINSW
+	//				&inst,
+	//#endif
+	//				1, //uniId
+	//				2, //checkId
+	//#ifdef detectionPerformanceMeasurement
+	//				injectingErrors,
+	//				-1,
+	//				-1,
+	//				executionId,
+	//#endif
+	//				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+	//				//					/*&(pid_roll.b),*/ &(pid_roll_backpropagation_orig), /*&(pid_roll.d), &(pid_roll.i), &(pid_roll.p),*/ /*&(pid_roll.prev_error),*/ &err2_orig, &desired_ailerons);//, &actual_ailerons);
+	//				&(pid_roll.backpropagation), &err2, &desired_ailerons, &actual_ailerons);//, &actual_ailerons);
+	//	}
 
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
@@ -1366,23 +1590,23 @@ int main(int argc, char * const argv[])
 	for (int i=0; i<4000; i++) {
 		init_img_matrix();
 
-//		for (int executionId=-1 ;executionId<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH; executionId++) {
+		//		for (int executionId=-1 ;executionId<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH; executionId++) {
 
-			//			unsigned int acc=0;
-//			for (int i = 0; i < IMG_HEIGHT; i++){
-//				for (int j = 0; j < IMG_WIDTH; j++){
-//					acc+=mat_in[i][j];
-//				}
-//			}
-//			printf("acc: %u", acc);
+		//			unsigned int acc=0;
+		//			for (int i = 0; i < IMG_HEIGHT; i++){
+		//				for (int j = 0; j < IMG_WIDTH; j++){
+		//					acc+=mat_in[i][j];
+		//				}
+		//			}
+		//			printf("acc: %u", acc);
 
-//			gauss_filter_routine(executionId);
+		//			gauss_filter_routine(executionId);
 		gauss_filter_routine(-1);
 
-//			printf("%d\n", executionId);
-//			fflush(stdout);
+		//			printf("%d\n", executionId);
+		//			fflush(stdout);
 
-//					}
+		//					}
 
 		FAULTDET_testing_resetGoldens();
 	}
@@ -1412,9 +1636,9 @@ int main(int argc, char * const argv[])
 	for (int i=0; i<4000; i++) {
 		init_test_data();
 
-//		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH; executionId++) {
-			forward_pass_test_burst(-1);
-//		}
+		//		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH; executionId++) {
+		forward_pass_test_burst(-1);
+		//		}
 		FAULTDET_testing_resetGoldens();
 	}
 #endif
@@ -1435,10 +1659,10 @@ int main(int argc, char * const argv[])
 
 			array_in[i]=x;
 		}
-		fft_routine(executionId);
+		fft_routine(executionId, 0);
 	}
 
-	for (int i=0; i<100; i++) {
+	for (int i=0; i<50; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1446,8 +1670,15 @@ int main(int argc, char * const argv[])
 
 			array_in[i]=x;
 		}
-		for (int executionId=-1 ;executionId<LOOP1TOTAL*FFT_LENGTH; executionId++) {
-			fft_routine(executionId);
+		fft_routine(-1,0);
+		if (FAULTDET_testing_loggin_faultdetected) {
+			continue;
+		}
+		//start to inject faults
+		for (int k=0; k<FFT_LENGTH; k++) {
+			for (int executionId=0; executionId<LOOP1TOTAL; executionId++) {
+				fft_routine(executionId, k);
+			}
 		}
 		FAULTDET_testing_resetGoldens();
 	}
@@ -1487,6 +1718,7 @@ int main(int argc, char * const argv[])
 	//	printf("%d|", FAULTDET_testing_getFalseNegatives_wtolerance());
 	printf("\"no_effect_bitflips\": %d", FAULTDET_testing_getNoEffects());
 	printf("}");
+	fflush(stdout);
 	//	printf("\ntotal for fp: %d\n", FAULTDET_testing_getTotal_golden());
 	//	printf("ok for fp: %d\n", FAULTDET_testing_getOk_golden());
 	//	printf("fp: %d\n", FAULTDET_testing_getFalsePositives_golden());

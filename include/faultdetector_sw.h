@@ -13,9 +13,9 @@
 #define FAULTDETECTOR_MAX_CHECKS 32
 #define FAULTDETECTOR_MAX_TASKS 8
 
-#ifdef FFTBench
+//#ifdef FFTBench
 #define FAULTDETECTOR_MAX_AOV_DIM 6
-#endif
+//#endif
 
 #ifdef latnavBench
 #define FAULTDETECTOR_MAX_AOV_DIM 4
