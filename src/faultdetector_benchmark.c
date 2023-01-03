@@ -705,7 +705,7 @@ static void fft_routine(int executionId, int k){
 				complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //96
 				complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
 
-				complex_sum(tmp, n_term,  executionId - (96+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
+				tmp=complex_sum(tmp, n_term,  executionId - (96+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
 
 				FAULTDET_testing_injectFault32(tmp, executionId, 32*0+(96+192+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/), injectingErrors);
 
@@ -732,9 +732,8 @@ static void fft_routine(int executionId, int k){
 					//				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
 					//				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
 
-					if (isnan(v2))
-						printf("isnan");
-
+//					if (isnan(v2))
+//						printf("isnan");
 
 					if (executionId<-1) {
 						FAULTDET_trainPoint(
@@ -759,7 +758,7 @@ static void fft_routine(int executionId, int k){
 								&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
 					}
 
-					complex_sum(even_sum,tmp, -1); //192
+					even_sum=complex_sum(even_sum,tmp, -1); //192
 
 					idx=0;
 					tmp.im=0;
@@ -787,12 +786,12 @@ static void fft_routine(int executionId, int k){
 
 		tmp.im=0;
 		tmp.re=0;
-		if (executionId<LOOP1TOTAL/2) {
+		if (executionId>=LOOP1TOTAL/2) {
 			for(n=1;n<FFT_LENGTH && !FAULTDET_testing_temp_faultdetected;n=n+2){ //LOOP3TOTAL
 				complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/) ); //96
 				complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/) ); //192
 
-				complex_sum(tmp,n_term,  executionId - (192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
+				tmp=complex_sum(tmp,n_term,  executionId - (192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
 
 				FAULTDET_testing_injectFault32(tmp, executionId, (192+192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/), injectingErrors);
 
@@ -844,7 +843,7 @@ static void fft_routine(int executionId, int k){
 								&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
 					}
 
-					complex_sum(odd_sum,tmp, -1); //192
+					odd_sum=complex_sum(odd_sum,tmp, -1); //192
 
 					idx=0;
 					tmp.im=0;
@@ -902,7 +901,7 @@ static void fft_routine(int executionId, int k){
 				complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //96
 				complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
 
-				complex_sum(tmp, n_term,  executionId - (96+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
+				tmp=complex_sum(tmp, n_term,  executionId - (96+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
 
 				FAULTDET_testing_injectFault32(tmp, executionId, 32*0+(96+192+192+((int)(n/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/), injectingErrors);
 
@@ -929,8 +928,8 @@ static void fft_routine(int executionId, int k){
 					//				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
 					//				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
 
-					if (isnan(v2))
-						printf("isnan");
+//					if (isnan(v2))
+//						printf("isnan");
 
 
 					if (executionId<-1) {
@@ -956,7 +955,7 @@ static void fft_routine(int executionId, int k){
 								&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
 					}
 
-					complex_sum(even_sum,tmp, -1); //192
+					even_sum=complex_sum(even_sum,tmp, -1); //192
 
 					idx=0;
 					tmp.im=0;
@@ -987,7 +986,7 @@ static void fft_routine(int executionId, int k){
 				complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH, executionId - (((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/) ); //96
 				complex n_term = complex_mult(array_in[n], cmplxexp, executionId - (96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/) ); //192
 
-				complex_sum(tmp,n_term,  executionId - (192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
+				tmp=complex_sum(tmp,n_term,  executionId - (192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/)); //192
 
 				FAULTDET_testing_injectFault32(tmp, executionId, (192+192+96+((int)((n-1)/2))*LOOP3TOTAL+32*2+((int)(FFT_LENGTH/2))*LOOP2TOTAL/*+k*LOOP1TOTAL*/), injectingErrors);
 
@@ -1039,7 +1038,7 @@ static void fft_routine(int executionId, int k){
 								&(v1), &(v2), &(v3), &(v4), &(tmp.re), &(tmp.im));
 					}
 
-					complex_sum(odd_sum,tmp, -1); //192
+					odd_sum=complex_sum(odd_sum,tmp, -1); //192
 
 					idx=0;
 					tmp.im=0;
@@ -1651,7 +1650,7 @@ int main(int argc, char * const argv[])
 		checks_idx[i]=part;
 	}
 
-	for (int executionId=-15000; executionId<-1; executionId++) {
+	for (int executionId=-20000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1662,7 +1661,7 @@ int main(int argc, char * const argv[])
 		fft_routine(executionId, 0);
 	}
 
-	for (int i=0; i<1; i++) {
+	for (int i=0; i<50; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
