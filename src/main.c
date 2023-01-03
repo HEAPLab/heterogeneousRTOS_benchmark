@@ -819,13 +819,15 @@ static void train_ann_routine(){
 #define M_PI 3.14159265358979323846
 #endif
 
-#define FFT_LENGTH 8
+#define FFT_LENGTH 512
+#define CHECKPERIODICITY 16
 typedef struct{
 	float re,im;
 } complex;
 
 static complex array_in[FFT_LENGTH];
 static complex array_out[FFT_LENGTH];
+volatile char faulty=0;
 
 
 /**
@@ -901,48 +903,39 @@ static void fft_routine_test(){
 
 		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
 		int n;
-		complex even_sum,odd_sum;
+		complex even_sum,odd_sum, even_sum2, odd_sum2;
 
-		float v1, v2, v3, v4;
+		float v1=0;
+		float v2=0;
+		float v3=0;
+		float v4=0;
 
 		even_sum.re=0;
 		even_sum.im=0;
 
-
 		int idx=0;
-		float mul=0;
+		int mul=0;
 		complex tmp;
 		tmp.im=0;
 		tmp.re=0;
+
 
 		for(n=0;n<FFT_LENGTH;n=n+2){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
-			complex_sum(tmp, n_term); //192
+			tmp=complex_sum(tmp, n_term); //192
 
-
-			switch(idx) {
-			case 0:
-				v1=array_in[n].re;
-				v3=array_in[n].im;
-				idx++;
-				break;
-			case 1:
+			if (idx<CHECKPERIODICITY/2) {
 				v1+=array_in[n].re;
 				v3+=array_in[n].im;
 				idx++;
-				break;
-			case 2:
-				v2=array_in[n].re;
-				v4=array_in[n].im;
-				idx++;
-				break;
-			case 3:
+			} else if (idx==CHECKPERIODICITY-1) {
 				v2+=array_in[n].re;
 				v4+=array_in[n].im;
 
 				mul=n*k;
+
 				int chkid=checksNum-1;
 				for (int i=0; i<checksNum-1; i++) {
 					if (mul<=checks_idx[i]){
@@ -951,7 +944,7 @@ static void fft_routine_test(){
 					}
 				}
 
-				contr.uniId=1;
+				contr.uniId=n;
 				contr.checkId=chkid;
 				//		contr.taskId=0;
 				//		contr.executionId=0;
@@ -966,13 +959,23 @@ static void fft_routine_test(){
 				//		FAULTDET_Test(&contr);
 				FAULTDET_testPoint(&contr);
 
-
-				complex_sum(even_sum,tmp); //192
+				even_sum=complex_sum(even_sum,tmp); //192
+				even_sum2=complex_sum(even_sum2,tmp); //192
+				if (memcmp(&even_sum, &even_sum, sizeof(complex))!=0)
+					faulty=0xFF;
 
 				idx=0;
 				tmp.im=0;
 				tmp.re=0;
-				break;
+
+				v1=0;
+				v2=0;
+				v3=0;
+				v4=0;
+			} else {
+				v2+=array_in[n].re;
+				v4+=array_in[n].im;
+				idx++;
 			}
 		}
 
@@ -989,28 +992,16 @@ static void fft_routine_test(){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
-			complex_sum(tmp,n_term); //192
+			tmp=complex_sum(tmp,n_term); //192
 
-			switch(idx) {
-			case 0:
-				v1=array_in[n].re;
-				v3=array_in[n].im;
-				idx++;
-				break;
-			case 1:
+			if (idx<CHECKPERIODICITY/2) {
 				v1+=array_in[n].re;
 				v3+=array_in[n].im;
 				idx++;
-				break;
-			case 2:
-				v2=array_in[n].re;
-				v4=array_in[n].im;
-				idx++;
-				break;
-			case 3:
+			} else if (idx==CHECKPERIODICITY-1) {
 				v2+=array_in[n].re;
 				v4+=array_in[n].im;
-				idx++;
+
 				mul=n*k;
 				int chkid=checksNum-1;
 				for (int i=0; i<checksNum-1; i++) {
@@ -1020,7 +1011,7 @@ static void fft_routine_test(){
 					}
 				}
 
-				contr.uniId=1;
+				contr.uniId=n;
 				contr.checkId=chkid;
 				//		contr.taskId=0;
 				//		contr.executionId=0;
@@ -1036,19 +1027,31 @@ static void fft_routine_test(){
 				//		FAULTDET_Test(&contr);
 				FAULTDET_testPoint(&contr);
 
-				complex_sum(odd_sum,tmp); //192
+				odd_sum=complex_sum(odd_sum,tmp); //192
+				odd_sum2=complex_sum(odd_sum2,tmp); //192
+				if (memcmp(&odd_sum, &odd_sum2, sizeof(complex))!=0)
+					faulty=0xFF;
 
 				idx=0;
 				tmp.im=0;
 				tmp.re=0;
-				break;
+
+				v1=0;
+				v2=0;
+				v3=0;
+				v4=0;
+			} else {
+				v2+=array_in[n].re;
+				v4+=array_in[n].im;
+				idx++;
 			}
 		}
 
 		complex out=complex_sum(even_sum,odd_sum);
-		//		complex out2=complex_sum(even_sum,odd_sum);
-		//		if (out!=out2)
-		//			FAULTDET_signalFault();
+		complex out2=complex_sum(even_sum,odd_sum);
+		if (memcmp(&out, &out2, sizeof(complex))!=0)
+			faulty=0xFF;
+
 #ifndef FAULTDETECTOR_EXECINSW
 		FAULTDET_blockIfFaultDetectedInTask(&contr);
 #endif
@@ -1129,49 +1132,39 @@ static void fft_routine_train(){
 
 		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
 		int n;
-		complex even_sum,odd_sum;
+		complex even_sum,odd_sum, even_sum2, odd_sum2;
 
-		float v1, v2, v3, v4;
+		float v1=0;
+		float v2=0;
+		float v3=0;
+		float v4=0;
 
 		even_sum.re=0;
 		even_sum.im=0;
 
-
 		int idx=0;
-		float mul=0;
+		int mul=0;
 		complex tmp;
 		tmp.im=0;
 		tmp.re=0;
+
 
 		for(n=0;n<FFT_LENGTH;n=n+2){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
-			complex_sum(tmp, n_term); //192
+			tmp=complex_sum(tmp, n_term); //192
 
-
-			switch(idx) {
-			case 0:
-				v1=array_in[n].re;
-				v3=array_in[n].im;
-				idx++;
-				break;
-			case 1:
+			if (idx<CHECKPERIODICITY/2) {
 				v1+=array_in[n].re;
 				v3+=array_in[n].im;
 				idx++;
-				break;
-			case 2:
-				v2=array_in[n].re;
-				v4=array_in[n].im;
-				idx++;
-				break;
-			case 3:
+			} else if (idx==CHECKPERIODICITY-1) {
 				v2+=array_in[n].re;
 				v4+=array_in[n].im;
 
-
 				mul=n*k;
+
 				int chkid=checksNum-1;
 				for (int i=0; i<checksNum-1; i++) {
 					if (mul<=checks_idx[i]){
@@ -1180,7 +1173,7 @@ static void fft_routine_train(){
 					}
 				}
 
-				contr.uniId=1;
+				contr.uniId=n;
 				contr.checkId=chkid;
 				//		contr.taskId=0;
 				//		contr.executionId=0;
@@ -1195,12 +1188,20 @@ static void fft_routine_train(){
 				//		FAULTDET_Test(&contr);
 				FAULTDET_trainPoint(&contr);
 
-				complex_sum(even_sum,tmp); //192
+				even_sum=complex_sum(even_sum,tmp); //192
 
 				idx=0;
 				tmp.im=0;
 				tmp.re=0;
-				break;
+
+				v1=0;
+				v2=0;
+				v3=0;
+				v4=0;
+			} else {
+				v2+=array_in[n].re;
+				v4+=array_in[n].im;
+				idx++;
 			}
 		}
 
@@ -1217,28 +1218,16 @@ static void fft_routine_train(){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
-			complex_sum(tmp,n_term); //192
+			tmp=complex_sum(tmp,n_term); //192
 
-			switch(idx) {
-			case 0:
-				v1=array_in[n].re;
-				v3=array_in[n].im;
-				idx++;
-				break;
-			case 1:
+			if (idx<CHECKPERIODICITY/2) {
 				v1+=array_in[n].re;
 				v3+=array_in[n].im;
 				idx++;
-				break;
-			case 2:
-				v2=array_in[n].re;
-				v4=array_in[n].im;
-				idx++;
-				break;
-			case 3:
+			} else if (idx==CHECKPERIODICITY-1) {
 				v2+=array_in[n].re;
 				v4+=array_in[n].im;
-				idx++;
+
 				mul=n*k;
 				int chkid=checksNum-1;
 				for (int i=0; i<checksNum-1; i++) {
@@ -1248,7 +1237,7 @@ static void fft_routine_train(){
 					}
 				}
 
-				contr.uniId=1;
+				contr.uniId=n;
 				contr.checkId=chkid;
 				//		contr.taskId=0;
 				//		contr.executionId=0;
@@ -1264,28 +1253,27 @@ static void fft_routine_train(){
 				//		FAULTDET_Test(&contr);
 				FAULTDET_trainPoint(&contr);
 
-				complex_sum(odd_sum,tmp); //192
+				odd_sum=complex_sum(odd_sum,tmp); //192
 
 				idx=0;
 				tmp.im=0;
 				tmp.re=0;
-				break;
+
+				v1=0;
+				v2=0;
+				v3=0;
+				v4=0;
+			} else {
+				v2+=array_in[n].re;
+				v4+=array_in[n].im;
+				idx++;
 			}
 		}
 
 		complex out=complex_sum(even_sum,odd_sum);
-		//		complex out2=complex_sum(even_sum,odd_sum);
-		//		if (out!=out2)
-		//			FAULTDET_signalFault();
-#ifndef FAULTDETECTOR_EXECINSW
-		FAULTDET_blockIfFaultDetectedInTask(&contr);
-#endif
+
 		array_out[k] = out; //192
 	}
-	//perf_stop_clock();
-	//printf("%u\n", get_clock_L());
-	//if (get_clock_U()!=0)
-	//	printf("err up not 0");
 }
 #endif
 
@@ -1496,9 +1484,9 @@ void latnav_train() {
 
 	/* Just a random plane model*/
 
-//	curr_heading += curr_roll/10 * TIME_STEP;
-//	curr_roll += curr_roll_rate * TIME_STEP;
-//	curr_roll_rate += desired_ailerons / 5;
+	//	curr_heading += curr_roll/10 * TIME_STEP;
+	//	curr_roll += curr_roll_rate * TIME_STEP;
+	//	curr_roll_rate += desired_ailerons / 5;
 
 	//	}
 	perf_stop_clock();
@@ -1695,9 +1683,9 @@ void latnav_test() {
 	FAULTDET_blockIfFaultDetectedInTask(&contr);
 #endif
 
-//	curr_heading += curr_roll/10 * TIME_STEP;
-//	curr_roll += curr_roll_rate * TIME_STEP;
-//	curr_roll_rate += desired_ailerons / 5;
+	//	curr_heading += curr_roll/10 * TIME_STEP;
+	//	curr_roll += curr_roll_rate * TIME_STEP;
+	//	curr_roll_rate += desired_ailerons / 5;
 
 	//	}
 	perf_stop_clock();
@@ -2204,7 +2192,7 @@ static void prvTaskFour( void *pvParameters )
 		checks_idx[i]=part;
 	}
 
-	for (int executionId=-10000; executionId<-1; executionId++) {
+	for (int executionId=-20000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -2216,7 +2204,7 @@ static void prvTaskFour( void *pvParameters )
 
 	}
 
-	for (int i=0; i<50000; i++) {
+	for (int i=0; i<4000; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -2224,6 +2212,7 @@ static void prvTaskFour( void *pvParameters )
 
 			array_in[i]=x;
 		}
+		faulty=0x0;
 		fft_routine_test();
 	}
 #endif
