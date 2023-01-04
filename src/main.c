@@ -14,6 +14,7 @@
 //#include "xil_printf.h"
 
 #define onOutputOnly
+#define testMode
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -924,6 +925,8 @@ static void fft_routine_test(){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
+
+#ifdef testMode
 			tmp=complex_sum(tmp, n_term); //192
 
 			if (idx<CHECKPERIODICITY/2) {
@@ -977,6 +980,9 @@ static void fft_routine_test(){
 				v4+=array_in[n].im;
 				idx++;
 			}
+#else
+			even_sum=complex_sum(even_sum,n_term); //192
+#endif
 		}
 
 		odd_sum.re=0;
@@ -992,6 +998,7 @@ static void fft_routine_test(){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
 			complex n_term = complex_mult(array_in[n], cmplxexp); //192
 
+#ifdef testMode
 			tmp=complex_sum(tmp,n_term); //192
 
 			if (idx<CHECKPERIODICITY/2) {
@@ -1045,15 +1052,20 @@ static void fft_routine_test(){
 				v4+=array_in[n].im;
 				idx++;
 			}
+#else
+			odd_sum=complex_sum(odd_sum,n_term); //192
+#endif
 		}
 
 		complex out=complex_sum(even_sum,odd_sum);
+#ifdef testMode
 		complex out2=complex_sum(even_sum,odd_sum);
 		if (memcmp(&out, &out2, sizeof(complex))!=0)
 			faulty=0xFF;
 
 #ifndef FAULTDETECTOR_EXECINSW
 		FAULTDET_blockIfFaultDetectedInTask(&contr);
+#endif
 #endif
 		array_out[k] = out; //192
 	}
@@ -2192,6 +2204,7 @@ static void prvTaskFour( void *pvParameters )
 		checks_idx[i]=part;
 	}
 
+#ifdef testMode
 	for (int executionId=-20000; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
@@ -2201,9 +2214,8 @@ static void prvTaskFour( void *pvParameters )
 			array_in[i]=x;
 		}
 		fft_routine_train();
-
 	}
-
+#endif
 	for (int i=0; i<4000; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
