@@ -1,7 +1,7 @@
 //#define latnavBench
 //#define FFTBench
-#define ANNBench
-//#define gaussianBench
+//#define ANNBench
+#define gaussianBench
 
 #define FAULTDETECTOR_EXECINSW
 #define detectionPerformanceMeasurement
@@ -67,7 +67,7 @@ char horizontalAccumulate=0x0;
 float oldtemp;
 float faultdet_vals[KERNEL_SIZE];
 char train;
-int uniIdCtr=0;
+//int uniIdCtr=0;
 
 #define LOOP2TOTAL (8+32*2)
 #define LOOP1TOTAL (LOOP2TOTAL*KERNEL_SIZE)
@@ -79,16 +79,19 @@ static int convolution2D(int p_x, int p_y, int executionId){
 	/*Kernel radius*/
 	k_r=KERNEL_SIZE/2;
 
+
 	//	FAULTDET_testing_injectFault32(p_x, executionId, 32*0, injectingErrors);
 	//	FAULTDET_testing_injectFault32(p_y, executionId, 32*1, injectingErrors);
 	//	FAULTDET_testing_injectFault32(k_r, executionId, 32*0, injectingErrors);
 
 	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
-	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
-		unsigned char res=mat_in[p_x][p_y];
-		//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
-		return res;
-	}
+
+	//	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+	//		unsigned char res=mat_in[p_x][p_y];
+	//		//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
+	//		return res;
+	//	}
+
 	/*offset between kernel's indexes and array's ones*/
 	offset_x=p_x-k_r;
 	offset_y=p_y-k_r;
@@ -144,7 +147,7 @@ static int convolution2D(int p_x, int p_y, int executionId){
 
 		if (train) {
 			FAULTDET_trainPoint(
-					uniIdCtr/*p_x*IMG_WIDTH+p_y*/,
+					p_x*IMG_HEIGHT+p_y,
 					0,  //checkId
 					6,
 					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
@@ -153,7 +156,7 @@ static int convolution2D(int p_x, int p_y, int executionId){
 #ifndef FAULTDETECTOR_EXECINSW
 					&inst,
 #endif
-					uniIdCtr/*p_x*IMG_WIDTH+p_y*/,
+					p_x*IMG_HEIGHT+p_y/*p_x*IMG_WIDTH+p_y*/,
 					0, //checkId
 #ifdef detectionPerformanceMeasurement
 					injectingErrors,
@@ -163,7 +166,7 @@ static int convolution2D(int p_x, int p_y, int executionId){
 #endif
 					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
 					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
-			uniIdCtr++;
+			//			uniIdCtr++;
 		}
 
 
@@ -193,12 +196,11 @@ static int convolution2D(int p_x, int p_y, int executionId){
  * @brief Actual gaussian filter implementation
  *
  */
-static void gauss_filter_routine(int executionId){
+static void gauss_filter_routine(int executionId, int i, int j){
 
-	horizontalAccumulate=0x0;
-	uniIdCtr=0;
+	//	uniIdCtr=0;
 
-	int i,j;
+	//	int i,j;
 	if (executionId<-1)
 		train=0xFF;
 	else
@@ -209,22 +211,63 @@ static void gauss_filter_routine(int executionId){
 	else
 		injectingErrors=0x0;
 
-	for(i=0;i<IMG_HEIGHT;i++){
-		for(j=0;j<IMG_WIDTH;j++){
-			//			if (executionId==95203) {
-			//				printf("pippo");
-			//				printf("i: %d, j: %d\n", i, j);
-			//			}
+	if (executionId>=0) {
+		//		char oldAcc=horizontalAccumulate;
+		//		int k_r=KERNEL_SIZE/2;
+		//		if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+		//			return;
+		//		}
 
-			mat_out[i][j]=convolution2D(i,j, executionId - (CONVOLUTIONTOTAL*(i*IMG_WIDTH+j)));
+		if (horizontalAccumulate) {
+			int prevj=j-1;
+			int previ=i;
+			if (prevj<KERNEL_SIZE/2) {
+				prevj=IMG_WIDTH-KERNEL_SIZE/2-1;
+				previ--;
+			}
+			if (previ<KERNEL_SIZE/2) {
+				printf("ERROR OUT OF BOUND");
+			}
+			horizontalAccumulate=0x0;
+			mat_out[previ][prevj]=convolution2D(previ, prevj, CONVOLUTIONTOTAL+100); //to avoid inject fault in the prev execution
+			mat_out[i][j]=convolution2D(i,j, executionId);
+		} else {
+			int nextj=j+1;
+			int nexti=i;
+			if (nextj>=IMG_WIDTH-KERNEL_SIZE/2) {
+				nextj=KERNEL_SIZE/2;
+				nexti++;
+			}
+			if (nexti>=IMG_HEIGHT-KERNEL_SIZE/2) {
+				printf("ERROR OUT OF BOUND");
+			}
+			mat_out[i][j]=convolution2D(i,j, executionId);
+			mat_out[nexti][nextj]=convolution2D(nexti, nextj, CONVOLUTIONTOTAL+100); //to avoid inject fault in the prev execution
+			horizontalAccumulate=0xFF;
 		}
-	}
-	if (!train) {
-		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
-	}
+		//		horizontalAccumulate=!oldAcc;
+	} else {
+		horizontalAccumulate=0x0;
 
-	if (horizontalAccumulate) {
-		printf("ERROR, HEIGHT OR WIDTH MUST BE EVEN\n");
+		for(i=KERNEL_SIZE/2;i<IMG_HEIGHT-KERNEL_SIZE/2;i++){
+			for(j=KERNEL_SIZE/2;j<IMG_WIDTH-KERNEL_SIZE/2;j++){
+				//			if (executionId==95203) {
+				//				printf("pippo");
+				//				printf("i: %d, j: %d\n", i, j);
+				//			}
+
+				mat_out[i][j]=convolution2D(i,j, executionId);
+			}
+		}
+
+		if (horizontalAccumulate) {
+			printf("ERROR, HEIGHT OR WIDTH MUST BE EVEN\n");
+		}
+		if (!train) {
+			FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
+		}
+
+
 	}
 }
 
@@ -1558,11 +1601,11 @@ int main(int argc, char * const argv[])
 	}
 
 	if (executions==0)
-		executions=4000;
+		executions=50000;
 	if (regs==0)
 		regs=16;
 	if (trainIter==0)
-		trainIter=10000;
+		trainIter=50000;
 
 	setlocale(LC_NUMERIC,"en_US.UTF-8");
 
@@ -1592,18 +1635,23 @@ int main(int argc, char * const argv[])
 
 	for (int i=-trainIter-1; i<-1; i++) {
 		init_img_matrix();
-		gauss_filter_routine(i);
+		gauss_filter_routine(i, -1, -1);
 	}
 
 	//32*32=1024, ceil(50000/1024)=49
 	int NoFp=0;
-	for (int i=0; i<50000; i++) {
+	for (int iter=0; iter<50000; iter++) {
 		init_img_matrix();
-		gauss_filter_routine(-1);
+		gauss_filter_routine(-1, -1, -1);
 		if (!FAULTDET_testing_loggin_faultdetected) {
 			while (NoFp<49) {
-				for (int executionId=0 ;executionId<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH; executionId++) {
-					gauss_filter_routine(executionId);
+				for (int executionId=0 ;executionId<CONVOLUTIONTOTAL; executionId++) {
+
+					for(int i=KERNEL_SIZE/2;i<IMG_HEIGHT-KERNEL_SIZE/2;i++){
+						for(int j=KERNEL_SIZE/2;j<IMG_WIDTH-KERNEL_SIZE/2;j++){
+							gauss_filter_routine(executionId, i, j);
+						}
+					}
 				}
 				NoFp++;
 			}
