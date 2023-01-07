@@ -9,13 +9,15 @@
 //#define COMMAND_TEST 2
 //#define COMMAND_TRAIN 3
 
+#define ANNBench
+
 #ifndef XFAULTDETECTOR_H
 #define FAULTDETECTOR_MAX_CHECKS 32
 #define FAULTDETECTOR_MAX_TASKS 8
 
-//#ifdef FFTBench
+#ifdef FFTBench
 #define FAULTDETECTOR_MAX_AOV_DIM 6
-//#endif
+#endif
 
 #ifdef latnavBench
 #define FAULTDETECTOR_MAX_AOV_DIM 4
@@ -41,7 +43,7 @@ typedef struct {
 	u8 checkId;
 	u8 taskId;
 	u8 executionId;
-	u16 uniId;
+	unsigned int uniId;
 	char command;
 	char gap0[2];
 	float AOV[FAULTDETECTOR_MAX_AOV_DIM];
@@ -56,14 +58,14 @@ typedef struct {
 typedef struct {
 	u8 checkId;
 	u8 executionId;
-	u16 uniId;
+	unsigned int uniId;
 	float AOV[FAULTDETECTOR_MAX_AOV_DIM];
 } FAULTDETECTOR_testpointDescriptorStr;
 
 typedef struct {
 	u8 checkId;
 	u8 executionId;
-	u16 uniId;
+	unsigned int uniId;
 } FAULTDETECTOR_testpointShortDescriptorStr;
 
 #endif
@@ -79,4 +81,5 @@ void FAULTDETECTOR_SW_allocRegions(int number_of_regions);
 void FAULTDETECTOR_SW_freeRegions();
 #endif
 
+void FAULTDETECTOR_SW_clearRegions();
 #endif

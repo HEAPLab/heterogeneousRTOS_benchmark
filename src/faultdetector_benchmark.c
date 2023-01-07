@@ -1,6 +1,6 @@
 //#define latnavBench
-#define FFTBench
-//#define ANNBench
+//#define FFTBench
+#define ANNBench
 //#define gaussianBench
 
 #define FAULTDETECTOR_EXECINSW
@@ -225,6 +225,14 @@ static void gauss_filter_routine(int executionId){
 
 	if (horizontalAccumulate) {
 		printf("ERROR, HEIGHT OR WIDTH MUST BE EVEN\n");
+	}
+}
+
+void init_img_matrix() {
+	for (int i = 0; i < IMG_HEIGHT; i++){
+		for (int j = 0; j < IMG_WIDTH; j++){
+			mat_in[i][j]=random_get()*256;
+		}
 	}
 }
 
@@ -666,8 +674,8 @@ int checks_idx[checksNum-1];
 #define LOOP3TOTAL (LOOP2TOTAL)
 #define LOOP1TOTAL (((int)((FFT_LENGTH-1)/2))*LOOP3TOTAL+((int)(FFT_LENGTH/2))*LOOP2TOTAL)
 
-complex odd_sum_golden;
-complex even_sum_golden;
+complex odd_sum_golden[FFT_LENGTH];
+complex even_sum_golden[FFT_LENGTH];
 
 static void fft_routine(int executionId, int k){
 	FAULTDET_testing_temp_faultdetected=0;
@@ -732,12 +740,12 @@ static void fft_routine(int executionId, int k){
 					//				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
 					//				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
 
-//					if (isnan(v2))
-//						printf("isnan");
+					//					if (isnan(v2))
+					//						printf("isnan");
 
 					if (executionId<-1) {
 						FAULTDET_trainPoint(
-								n,
+								FFT_LENGTH*k+n,
 								chkid,  //checkId
 								6,
 								&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
@@ -746,7 +754,7 @@ static void fft_routine(int executionId, int k){
 #ifndef FAULTDETECTOR_EXECINSW
 								&inst,
 #endif
-								n, //uniId
+								FFT_LENGTH*k+n, //uniId
 								chkid, //checkId
 #ifdef detectionPerformanceMeasurement
 								injectingErrors,
@@ -775,7 +783,7 @@ static void fft_routine(int executionId, int k){
 				}
 			}
 		} else {
-			even_sum=even_sum_golden;
+			even_sum=even_sum_golden[k];
 		}
 
 		odd_sum.re=0;
@@ -822,7 +830,7 @@ static void fft_routine(int executionId, int k){
 
 					if (executionId<-1) {
 						FAULTDET_trainPoint(
-								n,
+								FFT_LENGTH*k+n,
 								chkid,  //checkId
 								6,
 								&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
@@ -831,7 +839,7 @@ static void fft_routine(int executionId, int k){
 #ifndef FAULTDETECTOR_EXECINSW
 								&inst,
 #endif
-								n, //uniId
+								FFT_LENGTH*k+n, //uniId
 								chkid, //checkId
 #ifdef detectionPerformanceMeasurement
 								injectingErrors,
@@ -860,13 +868,14 @@ static void fft_routine(int executionId, int k){
 				}
 			}
 		} else {
-			odd_sum=odd_sum_golden;
+			odd_sum=odd_sum_golden[k];
 		}
 
 		complex out=complex_sum(even_sum,odd_sum, -10);
 
-		FAULTDET_testing_manual_compare_n_result(k, out.re);
-		FAULTDET_testing_manual_compare_n_result(k, out.im);
+		int idxGolden=k*2;
+		FAULTDET_testing_manual_compare_n_result(idxGolden, out.re);
+		FAULTDET_testing_manual_compare_n_result(idxGolden+1, out.im);
 
 		array_out[k] = out;
 		//		}
@@ -928,13 +937,13 @@ static void fft_routine(int executionId, int k){
 					//				int out0=((n+2)>=FFT_LENGTH) ? 4 : -1;
 					//				int out1=((n+2)>=FFT_LENGTH) ? 5 : -1;
 
-//					if (isnan(v2))
-//						printf("isnan");
+					//					if (isnan(v2))
+					//						printf("isnan");
 
 
 					if (executionId<-1) {
 						FAULTDET_trainPoint(
-								n,
+								FFT_LENGTH*k+n,
 								chkid,  //checkId
 								6,
 								&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
@@ -943,7 +952,7 @@ static void fft_routine(int executionId, int k){
 #ifndef FAULTDETECTOR_EXECINSW
 								&inst,
 #endif
-								n, //uniId
+								k*FFT_LENGTH+n, //uniId
 								chkid, //checkId
 #ifdef detectionPerformanceMeasurement
 								injectingErrors,
@@ -972,7 +981,7 @@ static void fft_routine(int executionId, int k){
 				}
 			}
 
-			even_sum_golden=even_sum;
+			even_sum_golden[k]=even_sum;
 
 			odd_sum.re=0;
 			odd_sum.im=0;
@@ -1017,7 +1026,7 @@ static void fft_routine(int executionId, int k){
 
 					if (executionId<-1) {
 						FAULTDET_trainPoint(
-								n,
+								FFT_LENGTH*k+n,
 								chkid,  //checkId
 								6,
 								&(v1), &(v2), &(v3), &(v4), &(tmp.re),  &(tmp.im));
@@ -1026,7 +1035,7 @@ static void fft_routine(int executionId, int k){
 #ifndef FAULTDETECTOR_EXECINSW
 								&inst,
 #endif
-								n, //uniId
+								FFT_LENGTH*k+n, //uniId
 								chkid, //checkId
 #ifdef detectionPerformanceMeasurement
 								injectingErrors,
@@ -1055,7 +1064,7 @@ static void fft_routine(int executionId, int k){
 				}
 			}
 
-			odd_sum_golden=odd_sum;
+			odd_sum_golden[k]=odd_sum;
 
 			complex out=complex_sum(even_sum,odd_sum, -10);
 
@@ -1581,63 +1590,77 @@ int main(int argc, char * const argv[])
 #ifdef gaussianBench
 	gaussian_kernel_init();
 
-	for (int i=-2000; i<-1; i++) {
+	for (int i=-trainIter-1; i<-1; i++) {
 		init_img_matrix();
 		gauss_filter_routine(i);
 	}
 
-	for (int i=0; i<4000; i++) {
+	//32*32=1024, ceil(50000/1024)=49
+	int NoFp=0;
+	for (int i=0; i<50000; i++) {
 		init_img_matrix();
-
-		//		for (int executionId=-1 ;executionId<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH; executionId++) {
-
-		//			unsigned int acc=0;
-		//			for (int i = 0; i < IMG_HEIGHT; i++){
-		//				for (int j = 0; j < IMG_WIDTH; j++){
-		//					acc+=mat_in[i][j];
-		//				}
-		//			}
-		//			printf("acc: %u", acc);
-
-		//			gauss_filter_routine(executionId);
 		gauss_filter_routine(-1);
-
-		//			printf("%d\n", executionId);
-		//			fflush(stdout);
-
-		//					}
+		if (!FAULTDET_testing_loggin_faultdetected) {
+			while (NoFp<49) {
+				for (int executionId=0 ;executionId<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH; executionId++) {
+					gauss_filter_routine(executionId);
+				}
+				NoFp++;
+			}
+		}
 
 		FAULTDET_testing_resetGoldens();
 	}
 
-	void init_img_matrix() {
-		for (int i = 0; i < IMG_HEIGHT; i++){
-			for (int j = 0; j < IMG_WIDTH; j++){
-				mat_in[i][j]=random_get()*256;
-			}
-		}
-	}
+
+	//	char pass=0x0;
+	//	int i=0;
+	//	while(!pass) {
+	////	for (int i=0; i<executions; i++) {
+	//		init_img_matrix();
+	//		gauss_filter_routine(-1);
+	//		if (!FAULTDET_testing_loggin_faultdetected) {
+	//			pass=0xFF;
+	//			for (int executionId=0 ;executionId<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH; executionId++) {
+	//				gauss_filter_routine(executionId);
+	//			}
+	//		}
+	//
+	//		fflush(stdout);
+	//
+	//		FAULTDET_testing_resetGoldens();
+	//		i++;
+	//	}
+	//
+	//	while (i<CONVOLUTIONTOTAL*IMG_HEIGHT*IMG_WIDTH) {
+	//		init_img_matrix();
+	//		gauss_filter_routine(-1);
+	//		FAULTDET_testing_resetGoldens();
+	//		i++;
+	//	}
+
 #endif
 
 #ifdef ANNBench
 
+	//	init_test_data();
+	//	forward_pass_test_burst(-2);
 	init_train_data();
 	train_ann_routine();
 
-	//	init_test_data();
-	//	forward_pass_test_burst(-2);
-
-	for (int i=-4000; i<-1; i++) {
+	for (int i=-trainIter-1; i<-1; i++) {
 		init_test_data();
 		forward_pass_test_burst(i);
 	}
 
-	for (int i=0; i<4000; i++) {
+	for (int i=0; i<executions; i++) {
 		init_test_data();
-
-		//		for (int executionId=-1 ;executionId<LOOP1TOTAL*BURST_LENGTH; executionId++) {
 		forward_pass_test_burst(-1);
-		//		}
+		if (!FAULTDET_testing_loggin_faultdetected) {
+			for (int executionId=0 ;executionId<LOOP1TOTAL*BURST_LENGTH; executionId++) {
+				forward_pass_test_burst(executionId);
+			}
+		}
 		FAULTDET_testing_resetGoldens();
 	}
 #endif
@@ -1650,7 +1673,7 @@ int main(int argc, char * const argv[])
 		checks_idx[i]=part;
 	}
 
-	for (int executionId=-20000; executionId<-1; executionId++) {
+	for (int executionId=-trainIter-1; executionId<-1; executionId++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1661,7 +1684,9 @@ int main(int argc, char * const argv[])
 		fft_routine(executionId, 0);
 	}
 
-	for (int i=0; i<50; i++) {
+	int NoFp=0;
+	for (int i=0; i<50000; i++) {
+		//	for (int i=0; i<50; i++) {
 		for(int i=0; i<FFT_LENGTH;i++){
 			complex x;
 			x.re=random_get();
@@ -1670,13 +1695,15 @@ int main(int argc, char * const argv[])
 			array_in[i]=x;
 		}
 		fft_routine(-1,0);
-		if (FAULTDET_testing_loggin_faultdetected) {
-			continue;
-		}
-		//start to inject faults
-		for (int k=0; k<FFT_LENGTH; k++) {
-			for (int executionId=0; executionId<LOOP1TOTAL; executionId++) {
-				fft_routine(executionId, k);
+		if (!FAULTDET_testing_loggin_faultdetected) {
+			if (NoFp<1) {
+				//start to inject faults
+				for (int k=0; k<FFT_LENGTH; k++) {
+					for (int executionId=0; executionId<LOOP1TOTAL; executionId++) {
+						fft_routine(executionId, k);
+					}
+				}
+				NoFp++;
 			}
 		}
 		FAULTDET_testing_resetGoldens();
@@ -1700,8 +1727,11 @@ int main(int argc, char * const argv[])
 		r2=random_get();
 		r3=random_get();
 		r4=random_get();
-		for (int executionId=-1 ;executionId<0/*1312*/; executionId++) {
-			latnav(executionId);
+		latnav(-1);
+		if (!FAULTDET_testing_loggin_faultdetected) {
+			for (int executionId=0 ;executionId<1312; executionId++) {
+				latnav(executionId);
+			}
 		}
 	}
 #endif

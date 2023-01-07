@@ -17,7 +17,7 @@ def log_tick_formatter(val, pos=None):
 
 
 #fntresholds=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-fntresholds=np.linspace(0.0, 3.0, num=150)
+fntresholds=np.linspace(0.0, 3.0, num=15)
 fn_withthresh=np.zeros(len(fntresholds), dtype=int)
 
 def main():
@@ -26,8 +26,12 @@ def main():
                     description = 'What the program does',
                     epilog = 'Text at the bottom of help')
     parser.add_argument('filename')           # positional argument
+    parser.add_argument('-fnt', '--falsenegativethreshold')      # option that takes a value
     parser.add_argument('-r', '--regions')      # option that takes a value
     parser.add_argument('-t', '--train')      # option that takes a value
+    parser.add_argument('-s', '--single')      # option that takes a value
+    parser.add_argument('-dse', '--designspaceexploration')      # option that takes a value
+
     args=parser.parse_args()
     with open(args.filename, "rb") as f:
         regions_x=[]
@@ -74,7 +78,7 @@ def main():
             regions_fp_rate.append(fp_r_clamped)
             regions_fn_rate.append(fn*100/total_neg)
 
-            if (trainIterations==int(args.train) and regions==int(args.regions)):
+            if (args.falsenegativethreshold is not None and (args.single is not None or trainIterations==int(args.train) and regions==int(args.regions))):
                 #relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
                 #relErrNum = relErrNum.view(dtype=np.float32)
                 fn_withthresh[0]=fn
@@ -118,63 +122,62 @@ def main():
                 #plt.plot(x_vals, density(x_vals))
             #except np.linalg.LinAlgError:
             #    print("singular matrix\n")
-    """fig, ax = plt.subplots()
-    relerrarr=(np.array(fn_withthresh)/np.array(total_neg))*np.array(100)
-    ax.plot(fntresholds, (relerrarr))
-    plt.gcf().subplots_adjust(left=0.2)
-    ax.yaxis.set_major_formatter(ticker.PercentFormatter())
-    ax.set_yscale('log')
     
-    ax.set_yscale('log')
-    plt.xlabel("Accepted relative error threshold")
-    plt.ylabel("False negatives rate")
-    
-    plt.show()"""
-            
+    if (args.falsenegativethreshold is not None):
+        fig, ax = plt.subplots()
+        relerrarr=(np.array(fn_withthresh)/np.array(total_neg))*np.array(100)
+        ax.plot(fntresholds, (relerrarr))
+        plt.gcf().subplots_adjust(left=0.2)
+        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
+        ax.set_yscale('log')
+        
+        ax.set_yscale('log')
+        plt.xlabel("Accepted relative error threshold")
+        plt.ylabel("False negatives rate")
+        
+        plt.show()
+
+    if (args.designspaceexploration is not None):
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        #X,Y=np.meshgrid(regions_x, regions_trainIterations)
+        #Z=np.array(regions_fn_rate)
+        surf=ax.plot_trisurf(np.log2(regions_x).astype(int), np.log2((np.array(regions_trainIterations)/100)).astype(int), regions_fn_rate, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        fig.colorbar(surf, shrink=0.5, aspect=5, pad=0.2)
+        #ax.set_zlabel('Log(2, Regions)')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))))))
+        ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y,pos: ('{:d}'.format(int(pow(2, y))*100))))
+        ax.zaxis.set_major_formatter(ticker.PercentFormatter())
+
+        ax.zaxis.set_tick_params(pad=0.2)
 
 
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    #X,Y=np.meshgrid(regions_x, regions_trainIterations)
-    #Z=np.array(regions_fn_rate)
-    surf=ax.plot_trisurf(np.log2(regions_x).astype(int), np.log2((np.array(regions_trainIterations)/100)).astype(int), regions_fn_rate, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    fig.colorbar(surf, shrink=0.5, aspect=5, pad=0.2)
-    #ax.set_zlabel('Log(2, Regions)')
-    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))))))
-    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y,pos: ('{:d}'.format(int(pow(2, y))*100))))
-    ax.zaxis.set_major_formatter(ticker.PercentFormatter())
 
-    ax.zaxis.set_tick_params(pad=0.2)
+        ax.set_xlabel('Regions')
+        ax.set_ylabel('Training iterations')
+        ax.set_zlabel('False negatives rate')
 
 
 
-    ax.set_xlabel('Regions')
-    ax.set_ylabel('Training iterations')
-    ax.set_zlabel('False negatives rate')
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        #X,Y=np.meshgrid(regions_x, regions_trainIterations)
+        #Z=np.array(regions_fn_rate)
+        surf=ax.plot_trisurf(np.log2(regions_x).astype(int), np.log2((np.array(regions_trainIterations)/100)).astype(int), regions_fp_rate, cmap=cm.coolwarm, linewidth=0, antialiased=False)
+        fig.colorbar(surf, shrink=0.5, aspect=5, pad=0.2)
+        #ax.set_zlabel('Log(2, Regions)'
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))))))
+        ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y,pos: ('{:d}'.format(int(pow(2, y))*100))))
+        ax.zaxis.set_major_formatter(ticker.PercentFormatter())
+    #  fig.colorbar(surf, orientation="vertical", pad=0.2)
 
 
-
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-    #X,Y=np.meshgrid(regions_x, regions_trainIterations)
-    #Z=np.array(regions_fn_rate)
-    surf=ax.plot_trisurf(np.log2(regions_x).astype(int), np.log2((np.array(regions_trainIterations)/100)).astype(int), regions_fp_rate, cmap=cm.coolwarm, linewidth=0, antialiased=False)
-    fig.colorbar(surf, shrink=0.5, aspect=5, pad=0.2)
-    #ax.set_zlabel('Log(2, Regions)'
-    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))))))
-    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y,pos: ('{:d}'.format(int(pow(2, y))*100))))
-    ax.zaxis.set_major_formatter(ticker.PercentFormatter())
-  #  fig.colorbar(surf, orientation="vertical", pad=0.2)
+        ax.zaxis.set_tick_params(pad=0.2)
 
 
-    ax.zaxis.set_tick_params(pad=0.2)
+        ax.set_xlabel('Regions')
+        ax.set_ylabel('Training iterations')
+        ax.set_zlabel('False positives rate')
 
-
-    ax.set_xlabel('Regions')
-    ax.set_ylabel('Training iterations')
-    ax.set_zlabel('False positives rate')
-
-    plt.show()
-
-
+        plt.show()
 
 
 if __name__ == "__main__":

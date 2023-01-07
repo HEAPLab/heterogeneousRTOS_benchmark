@@ -28,7 +28,7 @@ def main():
     #expRegion=2
     expRegionMultiplier=1
 
-    expTrain=10
+    expTrain=9
     #expTrain=2
     expTrainMultiplier=100
 
@@ -41,20 +41,16 @@ def main():
     fl.write(b'[')
 
     first=True
-    for t in range(2, expTrain+1, 1):
-        for r in range(1, expRegion, 1):
-            reg=pow(2, r)*expRegionMultiplier
-            train=pow(2,t)*expTrainMultiplier
-
-            procArr.put(subprocess.Popen([args.binary, "-r", str(int(reg)), "-t", str(int(train)), "-e", str(int(executions))], shell=True, stdout=subprocess.PIPE))
-                
-            if (procArr.full()):
-                if (first):
-                    first=False
-                else:
-                    fl.write(b',')
-                fl.write(procArr.get().stdout.read())
-
+    for t in range(3, expTrain+1, 1):
+        reg=16
+        train=pow(2,t)*expTrainMultiplier
+        procArr.put(subprocess.Popen([args.binary, "-r", str(int(reg)), "-t", str(int(train)), "-e", str(int(executions))], shell=True, stdout=subprocess.PIPE))              
+        if (procArr.full()):
+       	    if (first):
+                first=False
+            else:
+                fl.write(b',')
+            fl.write(procArr.get().stdout.read())
     while (not procArr.empty()):
         if (first):
             first=False

@@ -203,3 +203,17 @@ void FAULTDETECTOR_SW_train(FAULTDETECTOR_controlStr* in) {
 			&(n_regionsGlob[in->checkId]),
 			in->AOV);
 }
+
+void FAULTDETECTOR_SW_clearRegions() {
+	for (int i=0; i<FAULTDETECTOR_MAX_CHECKS; i++) {
+		n_regionsGlob[i]=0;
+		for (int j=0; j<FAULTDETECTOR_MAX_REGIONS; j++) {
+			for (int k=0; k<FAULTDETECTOR_MAX_AOV_DIM; k++) {
+				regionsGlob[i][j].center[k]=0;
+				regionsGlob[i][j].max[k]=0;
+				regionsGlob[i][j].min[k]=0;
+			}
+		}
+	}
+}
+

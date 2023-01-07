@@ -95,7 +95,7 @@ void FAULTDET_testing_blockUntilProcessed (FAULTDET_ExecutionDescriptor* instanc
 	}
 }
 #endif
-#define GOLDEN_RESULT_SIZE 65536
+#define GOLDEN_RESULT_SIZE 98304
 #define GOLDEN_MANUAL_RESULT_SIZE GOLDEN_RESULT_SIZE
 static int FAULTDET_testing_goldenResults_size=0;
 static int FAULTDET_testing_goldenResults_idx_tmp=0;
