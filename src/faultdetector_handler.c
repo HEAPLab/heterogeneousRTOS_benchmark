@@ -97,6 +97,8 @@ void FAULTDET_testing_blockUntilProcessed (FAULTDET_ExecutionDescriptor* instanc
 #endif
 #define GOLDEN_RESULT_SIZE 98304
 #define GOLDEN_MANUAL_RESULT_SIZE GOLDEN_RESULT_SIZE
+#define RELATIVE_ERROR_SIZE GOLDEN_RESULT_SIZE
+
 static int FAULTDET_testing_goldenResults_size=0;
 static int FAULTDET_testing_goldenResults_idx_tmp=0;
 static int FAULTDET_testing_manual_goldenResults_size=0;
@@ -104,7 +106,7 @@ static int FAULTDET_testing_manual_currGolden=0;
 
 FAULTDETECTOR_testpointDescriptorStr FAULTDET_testing_goldenResults[GOLDEN_RESULT_SIZE];
 float FAULTDET_testing_manual_golden[GOLDEN_RESULT_SIZE];
-static float FAULTDET_testing_relativeErrors[GOLDEN_RESULT_SIZE*FAULTDETECTOR_MAX_AOV_DIM];
+static float FAULTDET_testing_relativeErrors[RELATIVE_ERROR_SIZE];
 static int FAULTDET_testing_relativeErrors_size=0;
 
 
@@ -155,6 +157,7 @@ void FAULTDET_testing_manual_compare_n_result (int n, float value) {
 
 void FAULTDET_testing_resetGoldens () {
 	FAULTDET_testing_goldenResults_size=0;
+	FAULTDET_testing_relativeErrors_size=0;
 	FAULTDET_testing_goldenResults_idx_tmp=0;
 
 	FAULTDET_testing_manual_goldenResults_size=0;
@@ -310,7 +313,7 @@ u8 FAULTDET_testing_isAovEqual(FAULTDETECTOR_testpointDescriptorStr* golden, FAU
 #if csvOut
 				printf("0.%f.", relErr);
 #else
-				if (FAULTDET_testing_relativeErrors_size<=GOLDEN_RESULT_SIZE*FAULTDETECTOR_MAX_AOV_DIM) {
+				if (FAULTDET_testing_relativeErrors_size<=RELATIVE_ERROR_SIZE) {
 					FAULTDET_testing_relativeErrors[FAULTDET_testing_relativeErrors_size]=relErr;
 					FAULTDET_testing_relativeErrors_size++;
 				} else {

@@ -1,7 +1,7 @@
-//#define latnavBench
+#define latnavBench
 //#define FFTBench
 //#define ANNBench
-#define gaussianBench
+//#define gaussianBench
 
 #define FAULTDETECTOR_EXECINSW
 #define detectionPerformanceMeasurement
@@ -263,11 +263,10 @@ static void gauss_filter_routine(int executionId, int i, int j){
 		if (horizontalAccumulate) {
 			printf("ERROR, HEIGHT OR WIDTH MUST BE EVEN\n");
 		}
-		if (!train) {
-			FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
-		}
+	}
 
-
+	if (!train) {
+		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
 	}
 }
 
@@ -1441,6 +1440,32 @@ void latnav(int executionId) {
 	//				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
 	//	}
 
+		if (executionId<-1) {
+			FAULTDET_trainPoint(
+					1,
+					0,  //checkId
+					4,
+					//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+					&(curr_heading), &r4, &desired_roll, &actual_roll);//, &actual_roll);
+
+		} else {
+			FAULTDET_testPoint(
+	#ifndef FAULTDETECTOR_EXECINSW
+					&inst,
+	#endif
+					1, //uniId
+					0, //checkId
+	#ifdef detectionPerformanceMeasurement
+					injectingErrors,
+					-1,
+					-1,
+					executionId,
+	#endif
+					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+					//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+					&(curr_heading), &r4, &desired_roll, &actual_roll);//, &actual_roll);
+		}
+
 	pid_heading.backpropagation = actual_roll - desired_roll;
 
 	float pid_roll_backpropagation_orig=pid_roll.backpropagation;
@@ -1514,10 +1539,32 @@ void latnav(int executionId) {
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
+//	if (executionId<-1) {
+//		FAULTDET_trainPoint(
+//				1,
+//				3,  //checkId
+//				4,
+//				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
+//	}  else {
+//		FAULTDET_testPoint(
+//#ifndef FAULTDETECTOR_EXECINSW
+//				&inst,
+//#endif
+//				1, //uniId
+//				3, //checkId
+//#ifdef detectionPerformanceMeasurement
+//				injectingErrors,
+//				3,
+//				3,
+//				executionId,
+//#endif
+//				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+//				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
+//	}
 	if (executionId<-1) {
 		FAULTDET_trainPoint(
 				1,
-				3,  //checkId
+				1,  //checkId
 				4,
 				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
 	}  else {
@@ -1526,7 +1573,7 @@ void latnav(int executionId) {
 				&inst,
 #endif
 				1, //uniId
-				3, //checkId
+				1, //checkId
 #ifdef detectionPerformanceMeasurement
 				injectingErrors,
 				3,
@@ -1534,7 +1581,7 @@ void latnav(int executionId) {
 				executionId,
 #endif
 				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
+				&(curr_roll), &(actual_roll_rate), &curr_roll_rate, &actual_ailerons);
 	}
 
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
