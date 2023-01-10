@@ -23,13 +23,13 @@
 
 #include "perf_timer.h"
 
-#define FAULTDETECTOR_EXECINSW
+//#define FAULTDETECTOR_EXECINSW
 
 //#define gaussianBench
 //#define ANNBench
 //#define imgscalingBench
-#define FFTBench
-//#define latnavBench
+//#define FFTBench
+#define latnavBench
 
 #include "simple_random.h"
 
@@ -1418,19 +1418,33 @@ void latnav_train() {
 	desired_roll = run_pid(&pid_heading, err);
 	actual_roll = roll_limiter(desired_roll, 400);
 
-	contr.uniId=1;
-	contr.checkId=0;
-	//		contr.taskId=0;
-	//		contr.executionId=0;
-	//		contr.command=2;
-	contr.AOV[0]=pid_heading.backpropagation;
-	contr.AOV[1]=err;
-	contr.AOV[2]=desired_roll;
-	contr.AOV[3]=actual_roll;
-	contr.AOV[4]=0;
-	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		FAULTDET_Test(&contr);
-	FAULTDET_trainPoint(&contr);
+//	contr.uniId=1;
+//	contr.checkId=0;
+//	//		contr.taskId=0;
+//	//		contr.executionId=0;
+//	//		contr.command=2;
+//	contr.AOV[0]=pid_heading.backpropagation;
+//	contr.AOV[1]=err;
+//	contr.AOV[2]=desired_roll;
+//	contr.AOV[3]=actual_roll;
+//	contr.AOV[4]=0;
+//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+//	//		FAULTDET_Test(&contr);
+//	FAULTDET_trainPoint(&contr);
+
+		contr.uniId=1;
+		contr.checkId=0;
+		//		contr.taskId=0;
+		//		contr.executionId=0;
+		//		contr.command=2;
+		contr.AOV[0]=curr_heading;
+		contr.AOV[1]=r4;
+		contr.AOV[2]=desired_roll;
+		contr.AOV[3]=actual_roll;
+		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+		//		FAULTDET_Test(&contr);
+		FAULTDET_trainPoint(&contr);
+
 
 	pid_heading.backpropagation = actual_roll - desired_roll;
 
@@ -1442,19 +1456,19 @@ void latnav_train() {
 
 	actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll);
 
-	contr.uniId=1;
-	contr.checkId=1;
-	//		contr.taskId=0;
-	//		contr.executionId=0;
-	//		contr.command=2;
-	contr.AOV[0]=pid_roll.backpropagation;
-	contr.AOV[1]=err1;
-	contr.AOV[2]=desired_roll_rate;
-	contr.AOV[3]=actual_roll_rate;
-	contr.AOV[4]=curr_roll;
-	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		FAULTDET_Test(&contr);
-	FAULTDET_trainPoint(&contr);
+//	contr.uniId=1;
+//	contr.checkId=1;
+//	//		contr.taskId=0;
+//	//		contr.executionId=0;
+//	//		contr.command=2;
+//	contr.AOV[0]=pid_roll.backpropagation;
+//	contr.AOV[1]=err1;
+//	contr.AOV[2]=desired_roll_rate;
+//	contr.AOV[3]=actual_roll_rate;
+//	contr.AOV[4]=curr_roll;
+//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+//	//		FAULTDET_Test(&contr);
+//	FAULTDET_trainPoint(&contr);
 
 	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
 	pid_roll_backpropagation_orig=pid_roll.backpropagation;
@@ -1464,33 +1478,44 @@ void latnav_train() {
 	desired_ailerons = run_pid(&pid_roll, err2);
 	actual_ailerons = ailerons_limiter(desired_ailerons);
 
-	contr.uniId=1;
-	contr.checkId=2;
-	//		contr.taskId=0;
-	//		contr.executionId=0;
-	//		contr.command=2;
-	contr.AOV[0]=pid_roll.backpropagation;
-	contr.AOV[1]=err2;
-	contr.AOV[2]=desired_ailerons;
-	contr.AOV[3]=actual_ailerons;
-	contr.AOV[4]=0;
-	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		FAULTDET_Test(&contr);
-	FAULTDET_trainPoint(&contr);
+//	contr.uniId=1;
+//	contr.checkId=2;
+//	//		contr.taskId=0;
+//	//		contr.executionId=0;
+//	//		contr.command=2;
+//	contr.AOV[0]=pid_roll.backpropagation;
+//	contr.AOV[1]=err2;
+//	contr.AOV[2]=desired_ailerons;
+//	contr.AOV[3]=actual_ailerons;
+//	contr.AOV[4]=0;
+//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+//	//		FAULTDET_Test(&contr);
+//	FAULTDET_trainPoint(&contr);
 
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
+//	contr.uniId=1;
+//	contr.checkId=3;
+//	//		contr.taskId=0;
+//	//		contr.executionId=0;
+//	//		contr.command=2;
+//	contr.AOV[0]=curr_heading;
+//	contr.AOV[1]=curr_roll;
+//	contr.AOV[2]=curr_roll_rate;
+//	contr.AOV[3]=actual_ailerons;
+//	contr.AOV[4]=0;
+
+
 	contr.uniId=1;
-	contr.checkId=3;
+	contr.checkId=1;
 	//		contr.taskId=0;
 	//		contr.executionId=0;
 	//		contr.command=2;
-	contr.AOV[0]=curr_heading;
-	contr.AOV[1]=curr_roll;
+	contr.AOV[0]=curr_roll;
+	contr.AOV[1]=actual_roll_rate;
 	contr.AOV[2]=curr_roll_rate;
 	contr.AOV[3]=actual_ailerons;
-	contr.AOV[4]=0;
 
 	FAULTDET_trainPoint(&contr);
 
@@ -1576,16 +1601,28 @@ void latnav_test() {
 
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
+//	contr.uniId=1;
+//	contr.checkId=0;
+//	//		contr.taskId=0;
+//	//		contr.executionId=0;
+//	//		contr.command=2;
+//	contr.AOV[0]=pid_heading.backpropagation;
+//	contr.AOV[1]=err;
+//	contr.AOV[2]=desired_roll;
+//	contr.AOV[3]=actual_roll;
+//	contr.AOV[4]=0;
+//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+//	//		FAULTDET_Test(&contr);
+//	FAULTDET_testPoint(&contr);
 	contr.uniId=1;
 	contr.checkId=0;
 	//		contr.taskId=0;
 	//		contr.executionId=0;
 	//		contr.command=2;
-	contr.AOV[0]=pid_heading.backpropagation;
-	contr.AOV[1]=err;
+	contr.AOV[0]=curr_heading;
+	contr.AOV[1]=r4;
 	contr.AOV[2]=desired_roll;
 	contr.AOV[3]=actual_roll;
-	contr.AOV[4]=0;
 	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 	//		FAULTDET_Test(&contr);
 	FAULTDET_testPoint(&contr);
@@ -1610,19 +1647,19 @@ void latnav_test() {
 	//#endif
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-	contr.uniId=1;
-	contr.checkId=1;
-	//		contr.taskId=0;
-	//		contr.executionId=0;
-	//		contr.command=2;
-	contr.AOV[0]=pid_roll.backpropagation;
-	contr.AOV[1]=err1;
-	contr.AOV[2]=desired_roll_rate;
-	contr.AOV[3]=actual_roll_rate;
-	contr.AOV[4]=curr_roll;
-	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		FAULTDET_Test(&contr);
-	FAULTDET_testPoint(&contr);
+//	contr.uniId=1;
+//	contr.checkId=1;
+//	//		contr.taskId=0;
+//	//		contr.executionId=0;
+//	//		contr.command=2;
+//	contr.AOV[0]=pid_roll.backpropagation;
+//	contr.AOV[1]=err1;
+//	contr.AOV[2]=desired_roll_rate;
+//	contr.AOV[3]=actual_roll_rate;
+//	contr.AOV[4]=curr_roll;
+//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+//	//		FAULTDET_Test(&contr);
+//	FAULTDET_testPoint(&contr);
 
 
 	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
@@ -1643,19 +1680,19 @@ void latnav_test() {
 
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-	contr.uniId=1;
-	contr.checkId=2;
-	//		contr.taskId=0;
-	//		contr.executionId=0;
-	//		contr.command=2;
-	contr.AOV[0]=pid_roll.backpropagation;
-	contr.AOV[1]=err2;
-	contr.AOV[2]=desired_ailerons;
-	contr.AOV[3]=actual_ailerons;
-	contr.AOV[4]=0;
-	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		FAULTDET_Test(&contr);
-	FAULTDET_testPoint(&contr);
+//	contr.uniId=1;
+//	contr.checkId=2;
+//	//		contr.taskId=0;
+//	//		contr.executionId=0;
+//	//		contr.command=2;
+//	contr.AOV[0]=pid_roll.backpropagation;
+//	contr.AOV[1]=err2;
+//	contr.AOV[2]=desired_ailerons;
+//	contr.AOV[3]=actual_ailerons;
+//	contr.AOV[4]=0;
+//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+//	//		FAULTDET_Test(&contr);
+//	FAULTDET_testPoint(&contr);
 
 
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
@@ -1670,16 +1707,27 @@ void latnav_test() {
 
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
+//	contr.uniId=1;
+//	contr.checkId=3;
+//	//		contr.taskId=0;
+//	//		contr.executionId=0;
+//	//		contr.command=2;
+//	contr.AOV[0]=curr_heading;
+//	contr.AOV[1]=curr_roll;
+//	contr.AOV[2]=curr_roll_rate;
+//	contr.AOV[3]=actual_ailerons;
+//	contr.AOV[4]=0;
+//
+//	FAULTDET_testPoint(&contr);
 	contr.uniId=1;
-	contr.checkId=3;
+	contr.checkId=1;
 	//		contr.taskId=0;
 	//		contr.executionId=0;
 	//		contr.command=2;
-	contr.AOV[0]=curr_heading;
-	contr.AOV[1]=curr_roll;
+	contr.AOV[0]=curr_roll;
+	contr.AOV[1]=actual_roll_rate;
 	contr.AOV[2]=curr_roll_rate;
 	contr.AOV[3]=actual_ailerons;
-	contr.AOV[4]=0;
 
 	FAULTDET_testPoint(&contr);
 
@@ -2230,7 +2278,7 @@ static void prvTaskFour( void *pvParameters )
 #endif
 
 #ifdef latnavBench
-	for (int i=0; i<10000; i++) {
+	for (int i=0; i<4000; i++) {
 		r1=random_get();
 		r2=random_get();
 		r3=random_get();
@@ -2241,7 +2289,7 @@ static void prvTaskFour( void *pvParameters )
 	contr.executionId=0;
 	contr.taskId=0;
 	contr.uniId=0;
-	for (int i=0; i<4000; i++) {
+	for (int i=0; i<50000; i++) {
 		r1=random_get();
 		r2=random_get();
 		r3=random_get();
