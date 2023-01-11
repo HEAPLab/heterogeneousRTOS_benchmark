@@ -25,11 +25,11 @@
 
 //#define FAULTDETECTOR_EXECINSW
 
-//#define gaussianBench
+#define gaussianBench
 //#define ANNBench
 //#define imgscalingBench
 //#define FFTBench
-#define latnavBench
+//#define latnavBench
 
 #include "simple_random.h"
 
@@ -186,8 +186,8 @@ FAULTDETECTOR_controlStr contr;
 
 
 //at least one of them must be even
-#define IMG_HEIGHT 32
-#define IMG_WIDTH 32
+#define IMG_HEIGHT 128
+#define IMG_WIDTH 128
 
 #define KERNEL_SIZE 5
 
@@ -235,6 +235,7 @@ char horizontalAccumulate=0x0;
 float oldtemp;
 float faultdet_vals[KERNEL_SIZE];
 int uniIdCtr=0;
+float diff;
 
 static int convolution2D_train(int p_x, int p_y){
 	int k_r,offset_x,offset_y,i,j;
@@ -252,8 +253,6 @@ static int convolution2D_train(int p_x, int p_y){
 	offset_x=p_x-k_r;
 	offset_y=p_y-k_r;
 
-
-	oldtemp=temp;
 	temp=0;
 
 	if (horizontalAccumulate) {
@@ -262,19 +261,19 @@ static int convolution2D_train(int p_x, int p_y){
 		}
 
 		int loop1ctr=0;
-		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
 			int loop2ctr=0;
-			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
+			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
 				unsigned char in=mat_in[i][j];
 				float kernelin=kernel[i-offset_x][j-offset_y];
 				temp+=kernelin * in;
-				faultdet_vals[loop2ctr]+=in;
+				faultdet_vals[loop1ctr]-=in;
 				loop2ctr++;
 			}
 			loop1ctr++;
 		}
 
-		float out=temp-oldtemp;
+		diff=temp>oldtemp ? temp-oldtemp : oldtemp-temp;
 
 		contr.uniId=uniIdCtr;
 		contr.checkId=0;
@@ -286,7 +285,7 @@ static int convolution2D_train(int p_x, int p_y){
 		contr.AOV[2]=faultdet_vals[2];
 		contr.AOV[3]=faultdet_vals[3];
 		contr.AOV[4]=faultdet_vals[4];
-		contr.AOV[5]=out;
+		contr.AOV[5]=diff;
 
 		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 		//		FAULTDET_Test(&contr);
@@ -306,6 +305,7 @@ static int convolution2D_train(int p_x, int p_y){
 			loop1ctr++;
 		}
 	}
+	oldtemp=temp;
 	horizontalAccumulate=!horizontalAccumulate;
 	return temp;
 }
@@ -327,8 +327,6 @@ static int convolution2D_test(int p_x, int p_y){
 	offset_x=p_x-k_r;
 	offset_y=p_y-k_r;
 
-
-	oldtemp=temp;
 	temp=0;
 
 	if (horizontalAccumulate) {
@@ -337,20 +335,19 @@ static int convolution2D_test(int p_x, int p_y){
 		}
 
 		int loop1ctr=0;
-		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
 			int loop2ctr=0;
-			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
+			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
 				unsigned char in=mat_in[i][j];
 				float kernelin=kernel[i-offset_x][j-offset_y];
 				temp+=kernelin * in;
-				faultdet_vals[loop2ctr]+=in;
+				faultdet_vals[loop1ctr]-=in;
 				loop2ctr++;
 			}
 			loop1ctr++;
 		}
 
-		float out=temp-oldtemp;
-
+		diff=temp>oldtemp ? temp-oldtemp : oldtemp-temp;
 
 		contr.uniId=uniIdCtr;
 		contr.checkId=0;
@@ -362,7 +359,7 @@ static int convolution2D_test(int p_x, int p_y){
 		contr.AOV[2]=faultdet_vals[2];
 		contr.AOV[3]=faultdet_vals[3];
 		contr.AOV[4]=faultdet_vals[4];
-		contr.AOV[5]=out;
+		contr.AOV[5]=diff;
 
 		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 		//		FAULTDET_Test(&contr);
@@ -382,9 +379,156 @@ static int convolution2D_test(int p_x, int p_y){
 			loop1ctr++;
 		}
 	}
+	oldtemp=temp;
 	horizontalAccumulate=!horizontalAccumulate;
 	return temp;
 }
+
+//
+//static int convolution2D_train(int p_x, int p_y){
+//	int k_r,offset_x,offset_y,i,j;
+//	float temp;
+//
+//	/*Kernel radius*/
+//	k_r=KERNEL_SIZE/2;
+//
+//	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
+//	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+//		unsigned char res=mat_in[p_x][p_y];
+//		return res;
+//	}
+//	/*offset between kernel's indexes and array's ones*/
+//	offset_x=p_x-k_r;
+//	offset_y=p_y-k_r;
+//
+//	temp=0;
+//
+//	for (int i=0; i<KERNEL_SIZE; i++) {
+//		faultdet_vals[i]=0;
+//	}
+//	unsigned int checkId;
+//
+//	if (horizontalAccumulate) {
+//		int loop1ctr=0;
+//		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+//			int loop2ctr=0;
+//			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
+//				unsigned char in=mat_in[i][j];
+//				float kernelin=kernel[i-offset_x][j-offset_y];
+//				temp+=kernelin * in;
+//				faultdet_vals[loop2ctr]+=in;
+//				loop2ctr++;
+//			}
+//			loop1ctr++;
+//		}
+//	} else {
+//		int loop1ctr=0;
+//		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
+//			int loop2ctr=0;
+//			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
+//				unsigned char in=mat_in[i][j];
+//				float kernelin=kernel[i-offset_x][j-offset_y];
+//				temp+=kernelin * in;
+//				faultdet_vals[loop1ctr]+=in;
+//				loop2ctr++;
+//			}
+//			loop1ctr++;
+//		}
+//	}
+//	if (offset_x!=0)
+//		diff= temp>oldtemp ? temp-oldtemp : oldtemp-temp;
+//	else diff=0;
+//
+//	contr.uniId=uniIdCtr;
+//	contr.checkId=0;
+//	contr.AOV[0]=faultdet_vals[0];
+//	contr.AOV[1]=faultdet_vals[1];
+//	contr.AOV[2]=faultdet_vals[2];
+//	contr.AOV[3]=faultdet_vals[3];
+//	contr.AOV[4]=faultdet_vals[4];
+//	contr.AOV[5]=temp;
+//	contr.AOV[6]=diff;
+//	FAULTDET_trainPoint(&contr);
+//	uniIdCtr++;
+//
+//	oldtemp=temp;
+//
+//	horizontalAccumulate=!horizontalAccumulate;
+//	return temp;
+//}
+//
+//
+//static int convolution2D_test(int p_x, int p_y){
+//	int k_r,offset_x,offset_y,i,j;
+//	float temp;
+//
+//	/*Kernel radius*/
+//	k_r=KERNEL_SIZE/2;
+//
+//	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
+//	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+//		unsigned char res=mat_in[p_x][p_y];
+//		return res;
+//	}
+//	/*offset between kernel's indexes and array's ones*/
+//	offset_x=p_x-k_r;
+//	offset_y=p_y-k_r;
+//
+//	temp=0;
+//
+//	for (int i=0; i<KERNEL_SIZE; i++) {
+//		faultdet_vals[i]=0;
+//	}
+//	unsigned int checkId;
+//
+//	if (horizontalAccumulate) {
+//		int loop1ctr=0;
+//		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+//			int loop2ctr=0;
+//			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
+//				unsigned char in=mat_in[i][j];
+//				float kernelin=kernel[i-offset_x][j-offset_y];
+//				temp+=kernelin * in;
+//				faultdet_vals[loop2ctr]+=in;
+//				loop2ctr++;
+//			}
+//			loop1ctr++;
+//		}
+//	} else {
+//		int loop1ctr=0;
+//		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
+//			int loop2ctr=0;
+//			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
+//				unsigned char in=mat_in[i][j];
+//				float kernelin=kernel[i-offset_x][j-offset_y];
+//				temp+=kernelin * in;
+//				faultdet_vals[loop1ctr]+=in;
+//				loop2ctr++;
+//			}
+//			loop1ctr++;
+//		}
+//	}
+//	if (offset_x!=0)
+//		diff= temp>oldtemp ? temp-oldtemp : oldtemp-temp;
+//	else diff=0;
+//
+//	contr.uniId=uniIdCtr;
+//	contr.checkId=0;
+//	contr.AOV[0]=faultdet_vals[0];
+//	contr.AOV[1]=faultdet_vals[1];
+//	contr.AOV[2]=faultdet_vals[2];
+//	contr.AOV[3]=faultdet_vals[3];
+//	contr.AOV[4]=faultdet_vals[4];
+//	contr.AOV[5]=temp;
+//	contr.AOV[6]=diff;
+//	FAULTDET_testPoint(&contr);
+//	uniIdCtr++;
+//
+//	oldtemp=temp;
+//
+//	horizontalAccumulate=!horizontalAccumulate;
+//	return temp;
+//}
 
 
 /**
@@ -404,10 +548,6 @@ static void gauss_filter_routine_test() {
 		for(j=0;j<IMG_WIDTH;j++){
 			mat_out[i][j]=convolution2D_test(i,j);
 		}
-	}
-
-	if (horizontalAccumulate) {
-		printf("ERROR, HEIGHT OR WIDTH MUST BE EVEN\n");
 	}
 
 #ifndef FAULTDETECTOR_EXECINSW
@@ -653,12 +793,12 @@ static void forward_pass_test_burst_train(){
 			contr.AOV[1]=test_in[b][1];
 			contr.AOV[2]=test_in[b][2];
 			contr.AOV[3]=test_in[b][3];
-			contr.AOV[4]=out;
+			contr.AOV[4]=diff;
 			//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 			//		FAULTDET_Test(&contr);
 			FAULTDET_trainPoint(&contr);
 
-			test_out[b][y]=out;
+			test_out[b][y]=diff;
 		}
 
 	}
@@ -714,25 +854,25 @@ static void forward_pass_test_burst_test(){
 				activation+=(v1*v2);
 			}
 			float out=sigmoid(activation);
-
-			contr.uniId=b;
-			contr.checkId=0;
-			//		contr.taskId=0;
-			//		contr.executionId=0;
-			//		contr.command=2;
-			contr.AOV[0]=test_in[b][0];
-			contr.AOV[1]=test_in[b][1];
-			contr.AOV[2]=test_in[b][2];
-			contr.AOV[3]=test_in[b][3];
-			contr.AOV[4]=out;
-			//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-			//		FAULTDET_Test(&contr);
-			FAULTDET_testPoint(&contr);
-#ifndef FAULTDETECTOR_EXECINSW
-			if (b==BURST_LENGTH-1)
-				FAULTDET_blockIfFaultDetectedInTask(&contr);
-#endif
-			test_out[b][y]=out;
+			//
+			//			contr.uniId=b;
+			//			contr.checkId=0;
+			//			//		contr.taskId=0;
+			//			//		contr.executionId=0;
+			//			//		contr.command=2;
+			//			contr.AOV[0]=test_in[b][0];
+			//			contr.AOV[1]=test_in[b][1];
+			//			contr.AOV[2]=test_in[b][2];
+			//			contr.AOV[3]=test_in[b][3];
+			//			contr.AOV[4]=out;
+			//			//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+			//			//		FAULTDET_Test(&contr);
+			//			FAULTDET_testPoint(&contr);
+			//#ifndef FAULTDETECTOR_EXECINSW
+			//			if (b==BURST_LENGTH-1)
+			//				FAULTDET_blockIfFaultDetectedInTask(&contr);
+			//#endif
+			test_out[b][y]=diff;
 		}
 	}
 	perf_stop_clock();
@@ -1057,10 +1197,10 @@ static void fft_routine_test(){
 #endif
 		}
 
-		complex out=complex_sum(even_sum,odd_sum);
+		complex diff=complex_sum(even_sum,odd_sum);
 #ifdef testMode
 		complex out2=complex_sum(even_sum,odd_sum);
-		if (memcmp(&out, &out2, sizeof(complex))!=0)
+		if (memcmp(&diff, &out2, sizeof(complex))!=0)
 			faulty=0xFF;
 
 #ifndef FAULTDETECTOR_EXECINSW
@@ -1418,32 +1558,32 @@ void latnav_train() {
 	desired_roll = run_pid(&pid_heading, err);
 	actual_roll = roll_limiter(desired_roll, 400);
 
-//	contr.uniId=1;
-//	contr.checkId=0;
-//	//		contr.taskId=0;
-//	//		contr.executionId=0;
-//	//		contr.command=2;
-//	contr.AOV[0]=pid_heading.backpropagation;
-//	contr.AOV[1]=err;
-//	contr.AOV[2]=desired_roll;
-//	contr.AOV[3]=actual_roll;
-//	contr.AOV[4]=0;
-//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-//	//		FAULTDET_Test(&contr);
-//	FAULTDET_trainPoint(&contr);
+	//	contr.uniId=1;
+	//	contr.checkId=0;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=pid_heading.backpropagation;
+	//	contr.AOV[1]=err;
+	//	contr.AOV[2]=desired_roll;
+	//	contr.AOV[3]=actual_roll;
+	//	contr.AOV[4]=0;
+	//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//	//		FAULTDET_Test(&contr);
+	//	FAULTDET_trainPoint(&contr);
 
-		contr.uniId=1;
-		contr.checkId=0;
-		//		contr.taskId=0;
-		//		contr.executionId=0;
-		//		contr.command=2;
-		contr.AOV[0]=curr_heading;
-		contr.AOV[1]=r4;
-		contr.AOV[2]=desired_roll;
-		contr.AOV[3]=actual_roll;
-		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-		//		FAULTDET_Test(&contr);
-		FAULTDET_trainPoint(&contr);
+	contr.uniId=1;
+	contr.checkId=0;
+	//		contr.taskId=0;
+	//		contr.executionId=0;
+	//		contr.command=2;
+	contr.AOV[0]=curr_heading;
+	contr.AOV[1]=r4;
+	contr.AOV[2]=desired_roll;
+	contr.AOV[3]=actual_roll;
+	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//		FAULTDET_Test(&contr);
+	FAULTDET_trainPoint(&contr);
 
 
 	pid_heading.backpropagation = actual_roll - desired_roll;
@@ -1456,19 +1596,19 @@ void latnav_train() {
 
 	actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll);
 
-//	contr.uniId=1;
-//	contr.checkId=1;
-//	//		contr.taskId=0;
-//	//		contr.executionId=0;
-//	//		contr.command=2;
-//	contr.AOV[0]=pid_roll.backpropagation;
-//	contr.AOV[1]=err1;
-//	contr.AOV[2]=desired_roll_rate;
-//	contr.AOV[3]=actual_roll_rate;
-//	contr.AOV[4]=curr_roll;
-//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-//	//		FAULTDET_Test(&contr);
-//	FAULTDET_trainPoint(&contr);
+	//	contr.uniId=1;
+	//	contr.checkId=1;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=pid_roll.backpropagation;
+	//	contr.AOV[1]=err1;
+	//	contr.AOV[2]=desired_roll_rate;
+	//	contr.AOV[3]=actual_roll_rate;
+	//	contr.AOV[4]=curr_roll;
+	//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//	//		FAULTDET_Test(&contr);
+	//	FAULTDET_trainPoint(&contr);
 
 	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
 	pid_roll_backpropagation_orig=pid_roll.backpropagation;
@@ -1478,33 +1618,33 @@ void latnav_train() {
 	desired_ailerons = run_pid(&pid_roll, err2);
 	actual_ailerons = ailerons_limiter(desired_ailerons);
 
-//	contr.uniId=1;
-//	contr.checkId=2;
-//	//		contr.taskId=0;
-//	//		contr.executionId=0;
-//	//		contr.command=2;
-//	contr.AOV[0]=pid_roll.backpropagation;
-//	contr.AOV[1]=err2;
-//	contr.AOV[2]=desired_ailerons;
-//	contr.AOV[3]=actual_ailerons;
-//	contr.AOV[4]=0;
-//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-//	//		FAULTDET_Test(&contr);
-//	FAULTDET_trainPoint(&contr);
+	//	contr.uniId=1;
+	//	contr.checkId=2;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=pid_roll.backpropagation;
+	//	contr.AOV[1]=err2;
+	//	contr.AOV[2]=desired_ailerons;
+	//	contr.AOV[3]=actual_ailerons;
+	//	contr.AOV[4]=0;
+	//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//	//		FAULTDET_Test(&contr);
+	//	FAULTDET_trainPoint(&contr);
 
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
-//	contr.uniId=1;
-//	contr.checkId=3;
-//	//		contr.taskId=0;
-//	//		contr.executionId=0;
-//	//		contr.command=2;
-//	contr.AOV[0]=curr_heading;
-//	contr.AOV[1]=curr_roll;
-//	contr.AOV[2]=curr_roll_rate;
-//	contr.AOV[3]=actual_ailerons;
-//	contr.AOV[4]=0;
+	//	contr.uniId=1;
+	//	contr.checkId=3;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=curr_heading;
+	//	contr.AOV[1]=curr_roll;
+	//	contr.AOV[2]=curr_roll_rate;
+	//	contr.AOV[3]=actual_ailerons;
+	//	contr.AOV[4]=0;
 
 
 	contr.uniId=1;
@@ -1601,31 +1741,32 @@ void latnav_test() {
 
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-//	contr.uniId=1;
-//	contr.checkId=0;
-//	//		contr.taskId=0;
-//	//		contr.executionId=0;
-//	//		contr.command=2;
-//	contr.AOV[0]=pid_heading.backpropagation;
-//	contr.AOV[1]=err;
-//	contr.AOV[2]=desired_roll;
-//	contr.AOV[3]=actual_roll;
-//	contr.AOV[4]=0;
-//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-//	//		FAULTDET_Test(&contr);
-//	FAULTDET_testPoint(&contr);
-	contr.uniId=1;
-	contr.checkId=0;
-	//		contr.taskId=0;
-	//		contr.executionId=0;
-	//		contr.command=2;
-	contr.AOV[0]=curr_heading;
-	contr.AOV[1]=r4;
-	contr.AOV[2]=desired_roll;
-	contr.AOV[3]=actual_roll;
-	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-	//		FAULTDET_Test(&contr);
-	FAULTDET_testPoint(&contr);
+	//	contr.uniId=1;
+	//	contr.checkId=0;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=pid_heading.backpropagation;
+	//	contr.AOV[1]=err;
+	//	contr.AOV[2]=desired_roll;
+	//	contr.AOV[3]=actual_roll;
+	//	contr.AOV[4]=0;
+	//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//	//		FAULTDET_Test(&contr);
+	//	FAULTDET_testPoint(&contr);
+
+	//	contr.uniId=1;
+	//	contr.checkId=0;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=curr_heading;
+	//	contr.AOV[1]=r4;
+	//	contr.AOV[2]=desired_roll;
+	//	contr.AOV[3]=actual_roll;
+	//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//	//		FAULTDET_Test(&contr);
+	//	FAULTDET_testPoint(&contr);
 
 
 	pid_heading.backpropagation = actual_roll - desired_roll;
@@ -1647,19 +1788,19 @@ void latnav_test() {
 	//#endif
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-//	contr.uniId=1;
-//	contr.checkId=1;
-//	//		contr.taskId=0;
-//	//		contr.executionId=0;
-//	//		contr.command=2;
-//	contr.AOV[0]=pid_roll.backpropagation;
-//	contr.AOV[1]=err1;
-//	contr.AOV[2]=desired_roll_rate;
-//	contr.AOV[3]=actual_roll_rate;
-//	contr.AOV[4]=curr_roll;
-//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-//	//		FAULTDET_Test(&contr);
-//	FAULTDET_testPoint(&contr);
+	//	contr.uniId=1;
+	//	contr.checkId=1;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=pid_roll.backpropagation;
+	//	contr.AOV[1]=err1;
+	//	contr.AOV[2]=desired_roll_rate;
+	//	contr.AOV[3]=actual_roll_rate;
+	//	contr.AOV[4]=curr_roll;
+	//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//	//		FAULTDET_Test(&contr);
+	//	FAULTDET_testPoint(&contr);
 
 
 	pid_roll.backpropagation = actual_roll_rate - desired_roll_rate;
@@ -1680,19 +1821,19 @@ void latnav_test() {
 
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-//	contr.uniId=1;
-//	contr.checkId=2;
-//	//		contr.taskId=0;
-//	//		contr.executionId=0;
-//	//		contr.command=2;
-//	contr.AOV[0]=pid_roll.backpropagation;
-//	contr.AOV[1]=err2;
-//	contr.AOV[2]=desired_ailerons;
-//	contr.AOV[3]=actual_ailerons;
-//	contr.AOV[4]=0;
-//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-//	//		FAULTDET_Test(&contr);
-//	FAULTDET_testPoint(&contr);
+	//	contr.uniId=1;
+	//	contr.checkId=2;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=pid_roll.backpropagation;
+	//	contr.AOV[1]=err2;
+	//	contr.AOV[2]=desired_ailerons;
+	//	contr.AOV[3]=actual_ailerons;
+	//	contr.AOV[4]=0;
+	//	//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+	//	//		FAULTDET_Test(&contr);
+	//	FAULTDET_testPoint(&contr);
 
 
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
@@ -1707,29 +1848,30 @@ void latnav_test() {
 
 	//		while(!FAULTDETECTOR_isReadyForNextControl(&FAULTDETECTOR_InstancePtr)) {}
 
-//	contr.uniId=1;
-//	contr.checkId=3;
-//	//		contr.taskId=0;
-//	//		contr.executionId=0;
-//	//		contr.command=2;
-//	contr.AOV[0]=curr_heading;
-//	contr.AOV[1]=curr_roll;
-//	contr.AOV[2]=curr_roll_rate;
-//	contr.AOV[3]=actual_ailerons;
-//	contr.AOV[4]=0;
-//
-//	FAULTDET_testPoint(&contr);
 	contr.uniId=1;
-	contr.checkId=1;
+	contr.checkId=0;
 	//		contr.taskId=0;
 	//		contr.executionId=0;
 	//		contr.command=2;
-	contr.AOV[0]=curr_roll;
-	contr.AOV[1]=actual_roll_rate;
+	contr.AOV[0]=curr_heading;
+	contr.AOV[1]=curr_roll;
 	contr.AOV[2]=curr_roll_rate;
 	contr.AOV[3]=actual_ailerons;
+	//	contr.AOV[4]=0;
 
 	FAULTDET_testPoint(&contr);
+
+	//	contr.uniId=1;
+	//	contr.checkId=1;
+	//	//		contr.taskId=0;
+	//	//		contr.executionId=0;
+	//	//		contr.command=2;
+	//	contr.AOV[0]=curr_roll;
+	//	contr.AOV[1]=actual_roll_rate;
+	//	contr.AOV[2]=curr_roll_rate;
+	//	contr.AOV[3]=actual_ailerons;
+	//
+	//	FAULTDET_testPoint(&contr);
 
 	//		FAULTDET_Test(&contr);
 
@@ -2222,7 +2364,7 @@ static void prvTaskFour( void *pvParameters )
 		forward_pass_test_burst_train();
 	}
 
-	for (int i=0; i<4000; i++) {
+	for (int i=0; i<50000; i++) {
 		init_test_data();
 		forward_pass_test_burst_test();
 	}
@@ -2232,12 +2374,12 @@ static void prvTaskFour( void *pvParameters )
 
 	gaussian_kernel_init();
 
-	for (int i=-2000; i<-1; i++) {
+	for (int i=-1600; i<-1; i++) {
 		init_img_matrix();
 		gauss_filter_routine_train();
 	}
 
-	for (int i=0; i<4000; i++) {
+	for (int i=0; i<50000; i++) {
 		init_img_matrix();
 		gauss_filter_routine_test();
 	}
