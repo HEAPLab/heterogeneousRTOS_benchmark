@@ -1566,7 +1566,7 @@ void latnav(int executionId) {
 				1,
 				1,  //checkId
 				4,
-				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
+				&(curr_roll), &(actual_roll_rate), &curr_roll_rate, &actual_ailerons);
 	}  else {
 		FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
