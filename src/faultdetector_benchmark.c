@@ -1,7 +1,7 @@
-#define latnavBench
+//#define latnavBench
 //#define FFTBench
 //#define ANNBench
-//#define gaussianBench
+#define gaussianBench
 
 #define FAULTDETECTOR_EXECINSW
 #define detectionPerformanceMeasurement
@@ -86,11 +86,11 @@ static int convolution2D(int p_x, int p_y, int executionId){
 
 	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
 
-	//	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
-	//		unsigned char res=mat_in[p_x][p_y];
-	//		//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
-	//		return res;
-	//	}
+		if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+			unsigned char res=mat_in[p_x][p_y];
+			//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
+			return res;
+		}
 
 	/*offset between kernel's indexes and array's ones*/
 	offset_x=p_x-k_r;
@@ -99,7 +99,6 @@ static int convolution2D(int p_x, int p_y, int executionId){
 	//	FAULTDET_testing_injectFault32(offset_x, executionId, 32*1+8*1, injectingErrors);
 	//	FAULTDET_testing_injectFault32(offset_y, executionId, 32*2+8*1, injectingErrors);
 
-	oldtemp=temp;
 	temp=0;
 
 
@@ -133,7 +132,7 @@ static int convolution2D(int p_x, int p_y, int executionId){
 			loop1ctr++;
 		}
 
-		float out=temp-oldtemp;
+		float out=temp>oldtemp ? temp-oldtemp : oldtemp-temp;
 
 		int currVecSize=KERNEL_SIZE;
 		while (currVecSize>5) {
@@ -160,8 +159,8 @@ static int convolution2D(int p_x, int p_y, int executionId){
 					0, //checkId
 #ifdef detectionPerformanceMeasurement
 					injectingErrors,
-					5,
-					5,
+					-1,
+					-1,
 					executionId,
 #endif
 					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
@@ -180,14 +179,23 @@ static int convolution2D(int p_x, int p_y, int executionId){
 				FAULTDET_testing_injectFault8(in, executionId, LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
 				FAULTDET_testing_injectFault32(kernelin, executionId, 8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
 				temp+=kernelin * in;
-				FAULTDET_testing_injectFault8(temp, executionId, 32*1+8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+				FAULTDET_testing_injectFault32(temp, executionId, 32*1+8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
 				faultdet_vals[loop1ctr]+=in;
 				loop2ctr++;
 			}
 			loop1ctr++;
 		}
 	}
+
+	if (executionId>=0) {
+		FAULTDET_testing_manual_compare_n_result(offset_x*(IMG_HEIGHT-k_r*2)+offset_y, temp);
+	} else if (executionId==-1) {
+		FAULTDET_testing_manual_result(temp, injectingErrors);
+	}
+
 	horizontalAccumulate=!horizontalAccumulate;
+	oldtemp=temp;
+
 	return temp;
 }
 
@@ -229,7 +237,7 @@ static void gauss_filter_routine(int executionId, int i, int j){
 				printf("ERROR OUT OF BOUND");
 			}
 			horizontalAccumulate=0x0;
-			mat_out[previ][prevj]=convolution2D(previ, prevj, CONVOLUTIONTOTAL+100); //to avoid inject fault in the prev execution
+			mat_out[previ][prevj]=convolution2D(previ, prevj, CONVOLUTIONTOTAL+10000); //to avoid inject fault in the prev execution
 			mat_out[i][j]=convolution2D(i,j, executionId);
 		} else {
 			int nextj=j+1;
@@ -242,7 +250,7 @@ static void gauss_filter_routine(int executionId, int i, int j){
 				printf("ERROR OUT OF BOUND");
 			}
 			mat_out[i][j]=convolution2D(i,j, executionId);
-			mat_out[nexti][nextj]=convolution2D(nexti, nextj, CONVOLUTIONTOTAL+100); //to avoid inject fault in the prev execution
+			mat_out[nexti][nextj]=convolution2D(nexti, nextj, CONVOLUTIONTOTAL+10000); //to avoid inject fault in the prev execution
 			horizontalAccumulate=0xFF;
 		}
 		//		horizontalAccumulate=!oldAcc;
@@ -270,6 +278,184 @@ static void gauss_filter_routine(int executionId, int i, int j){
 	}
 }
 
+
+
+//float oldtemp;
+//static int convolution2D(int p_x, int p_y, int executionId){
+//	int k_r,offset_x,offset_y,i,j;
+//	float temp, diff;
+//
+//	/*Kernel radius*/
+//	k_r=KERNEL_SIZE/2;
+//
+//
+//	//	FAULTDET_testing_injectFault32(p_x, executionId, 32*0, injectingErrors);
+//	//	FAULTDET_testing_injectFault32(p_y, executionId, 32*1, injectingErrors);
+//	//	FAULTDET_testing_injectFault32(k_r, executionId, 32*0, injectingErrors);
+//
+//	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
+//
+//	//	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+//	//		unsigned char res=mat_in[p_x][p_y];
+//	//		//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
+//	//		return res;
+//	//	}
+//
+//	/*offset between kernel's indexes and array's ones*/
+//	offset_x=p_x-k_r;
+//	offset_y=p_y-k_r;
+//
+//	//	FAULTDET_testing_injectFault32(offset_x, executionId, 32*1+8*1, injectingErrors);
+//	//	FAULTDET_testing_injectFault32(offset_y, executionId, 32*2+8*1, injectingErrors);
+//
+//	temp=0;
+//
+//	/*    for(i=p_x-k_r;i<=p_x+k_r;i++){
+//        for(j=p_y-k_r;j<=p_y+k_r;j++){
+//        	unsigned char in=mat_in[i+j][j];
+//            temp+=kernel[i-offset_x+j-offset_y][j-offset_y] * in;
+//            faultdet_vals[ctr]+=in;
+//        }
+//        ctr++;
+//    }*/
+//
+//	for (int i=0; i<KERNEL_SIZE; i++) {
+//		faultdet_vals[i]=0;
+//	}
+//	unsigned int checkId;
+//	if (horizontalAccumulate) {
+////		checkId=1;
+//		int loop1ctr=0;
+//		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+//			int loop2ctr=0;
+//			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
+//				unsigned char in=mat_in[i][j];
+//				float kernelin=kernel[i-offset_x][j-offset_y];
+//				FAULTDET_testing_injectFault8(in, executionId, LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				FAULTDET_testing_injectFault32(kernelin, executionId, 8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				temp+=kernelin * in;
+//				FAULTDET_testing_injectFault32(temp, executionId, 32*1+8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				faultdet_vals[loop2ctr]+=in;
+//				loop2ctr++;
+//			}
+//			loop1ctr++;
+//		}
+//	} else {
+////		checkId=0;
+//		int loop1ctr=0;
+//		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
+//			int loop2ctr=0;
+//			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
+//				unsigned char in=mat_in[i][j];
+//				float kernelin=kernel[i-offset_x][j-offset_y];
+//				FAULTDET_testing_injectFault8(in, executionId, LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				FAULTDET_testing_injectFault32(kernelin, executionId, 8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				temp+=kernelin * in;
+//				FAULTDET_testing_injectFault32(temp, executionId, 32*1+8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				faultdet_vals[loop1ctr]+=in;
+//				loop2ctr++;
+//			}
+//			loop1ctr++;
+//		}
+//	}
+//
+//	int currVecSize=KERNEL_SIZE;
+//	while (currVecSize>5) {
+//		for (int i=0; i<KERNEL_SIZE-1; i+=2) {
+//			faultdet_vals[currVecSize]=faultdet_vals[currVecSize+1];
+//			currVecSize--;
+//			if (currVecSize<=5)
+//				break;
+//		}
+//	}
+//
+//	if (offset_x!=0)
+//		diff= temp>oldtemp ? temp-oldtemp : oldtemp-temp;
+//	else diff=0;
+//
+//	if (train) {
+//		FAULTDET_trainPoint(
+//				p_x*IMG_HEIGHT+p_y,
+//				0,  //checkId
+//				7,
+//				&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(temp), &(diff));
+//	} else {
+//		FAULTDET_testPoint(
+//#ifndef FAULTDETECTOR_EXECINSW
+//				&inst,
+//#endif
+//				p_x*IMG_HEIGHT+p_y/*p_x*IMG_WIDTH+p_y*/,
+//				0, //checkId
+//#ifdef detectionPerformanceMeasurement
+//				injectingErrors,
+//				5,
+//				5,
+//				executionId,
+//#endif
+//				7, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+//				&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(temp), &(diff));
+//		//			uniIdCtr++;
+//	}
+//
+//	oldtemp=temp;
+//
+//	horizontalAccumulate=!horizontalAccumulate;
+//	return temp;
+//}
+//
+//
+///**
+// * @brief Actual gaussian filter implementation
+// *
+// */
+//static void gauss_filter_routine(int executionId, int i, int j){
+//
+//	//	uniIdCtr=0;
+//
+//	//	int i,j;
+//	if (executionId<-1)
+//		train=0xFF;
+//	else
+//		train=0x0;
+//
+//	oldtemp=0;
+//
+//	if (executionId>=0)
+//		injectingErrors=0xFF;
+//	else
+//		injectingErrors=0x0;
+//
+//	if (executionId>=0) {
+//		//		char oldAcc=horizontalAccumulate;
+//		//		int k_r=KERNEL_SIZE/2;
+//		//		if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+//		//			return;
+//		//		}
+//
+//		mat_out[i][j]=convolution2D(i,j, executionId);
+//	} else {
+//		horizontalAccumulate=0x0;
+//
+//		for(i=KERNEL_SIZE/2;i<IMG_HEIGHT-KERNEL_SIZE/2;i++){
+//			for(j=KERNEL_SIZE/2;j<IMG_WIDTH-KERNEL_SIZE/2;j++){
+//				//			if (executionId==95203) {
+//				//				printf("pippo");
+//				//				printf("i: %d, j: %d\n", i, j);
+//				//			}
+//
+//				mat_out[i][j]=convolution2D(i,j, executionId);
+//			}
+//		}
+//	}
+//
+//	if (!train) {
+//		FAULTDET_testing_commitTmpStatsAndReset(injectingErrors);
+//	}
+//}
+
+
+
+
 void init_img_matrix() {
 	for (int i = 0; i < IMG_HEIGHT; i++){
 		for (int j = 0; j < IMG_WIDTH; j++){
@@ -277,6 +463,7 @@ void init_img_matrix() {
 		}
 	}
 }
+
 
 /**
  * @brief It performs gaussian filtering on a random grayscale image . The execution time is measured through user defined MEASURE_START()/MEASURE_STOP() macros.
@@ -1440,31 +1627,31 @@ void latnav(int executionId) {
 	//				&(pid_heading.backpropagation), &err, &desired_roll, &actual_roll);//, &actual_roll);
 	//	}
 
-		if (executionId<-1) {
-			FAULTDET_trainPoint(
-					1,
-					0,  //checkId
-					4,
-					//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-					&(curr_heading), &r4, &desired_roll, &actual_roll);//, &actual_roll);
+	if (executionId<-1) {
+		FAULTDET_trainPoint(
+				1,
+				0,  //checkId
+				4,
+				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+				&(curr_heading), &r4, &desired_roll, &actual_roll);//, &actual_roll);
 
-		} else {
-			FAULTDET_testPoint(
-	#ifndef FAULTDETECTOR_EXECINSW
-					&inst,
-	#endif
-					1, //uniId
-					0, //checkId
-	#ifdef detectionPerformanceMeasurement
-					injectingErrors,
-					-1,
-					-1,
-					executionId,
-	#endif
-					4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
-					&(curr_heading), &r4, &desired_roll, &actual_roll);//, &actual_roll);
-		}
+	} else {
+		FAULTDET_testPoint(
+#ifndef FAULTDETECTOR_EXECINSW
+				&inst,
+#endif
+				1, //uniId
+				0, //checkId
+#ifdef detectionPerformanceMeasurement
+				injectingErrors,
+				-1,
+				-1,
+				executionId,
+#endif
+				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+				//					/*&(pid_heading.b),*/ &(pid_heading_backpropagation_orig), /*&(pid_heading.d), &(pid_heading.i), &(pid_heading.p),*/ /*&(pid_heading.prev_error),*/ &err_orig, &desired_roll);//, &actual_roll);
+				&(curr_heading), &r4, &desired_roll, &actual_roll);//, &actual_roll);
+	}
 
 	pid_heading.backpropagation = actual_roll - desired_roll;
 
@@ -1539,28 +1726,28 @@ void latnav(int executionId) {
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
 
 
-//	if (executionId<-1) {
-//		FAULTDET_trainPoint(
-//				1,
-//				3,  //checkId
-//				4,
-//				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
-//	}  else {
-//		FAULTDET_testPoint(
-//#ifndef FAULTDETECTOR_EXECINSW
-//				&inst,
-//#endif
-//				1, //uniId
-//				3, //checkId
-//#ifdef detectionPerformanceMeasurement
-//				injectingErrors,
-//				3,
-//				3,
-//				executionId,
-//#endif
-//				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-//				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
-//	}
+	//	if (executionId<-1) {
+	//		FAULTDET_trainPoint(
+	//				1,
+	//				3,  //checkId
+	//				4,
+	//				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
+	//	}  else {
+	//		FAULTDET_testPoint(
+	//#ifndef FAULTDETECTOR_EXECINSW
+	//				&inst,
+	//#endif
+	//				1, //uniId
+	//				3, //checkId
+	//#ifdef detectionPerformanceMeasurement
+	//				injectingErrors,
+	//				3,
+	//				3,
+	//				executionId,
+	//#endif
+	//				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+	//				&(curr_heading), &(curr_roll), &curr_roll_rate, &desired_ailerons);
+	//	}
 	if (executionId<-1) {
 		FAULTDET_trainPoint(
 				1,
@@ -1693,7 +1880,7 @@ int main(int argc, char * const argv[])
 		if (!FAULTDET_testing_loggin_faultdetected) {
 			while (NoFp<49) {
 				for (int executionId=0 ;executionId<CONVOLUTIONTOTAL; executionId++) {
-
+					horizontalAccumulate=0x0;
 					for(int i=KERNEL_SIZE/2;i<IMG_HEIGHT-KERNEL_SIZE/2;i++){
 						for(int j=KERNEL_SIZE/2;j<IMG_WIDTH-KERNEL_SIZE/2;j++){
 							gauss_filter_routine(executionId, i, j);
