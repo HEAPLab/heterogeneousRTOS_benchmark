@@ -17,7 +17,7 @@ def log_tick_formatter(val, pos=None):
 
 
 #fntresholds=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-fntresholds=np.linspace(0.0, 3.0, num=15)
+fntresholds=np.linspace(0.0, 3.0, num=30)
 fn_withthresh=np.zeros(len(fntresholds), dtype=int)
 
 def main():
@@ -31,6 +31,8 @@ def main():
     parser.add_argument('-t', '--train')      # option that takes a value
     parser.add_argument('-s', '--single')      # option that takes a value
     parser.add_argument('-dse', '--designspaceexploration')      # option that takes a value
+    parser.add_argument('-fftT', '--fftcheckperiod')      # option that takes a value
+    parser.add_argument('-fftsize', '--fftsize')      # option that takes a value
 
     args=parser.parse_args()
     with open(args.filename, "rb") as f:
@@ -52,6 +54,13 @@ def main():
             total_neg=int(record["true_neg"])+int(record["false_neg"])
             tn=int(record["true_neg"])
             fn=int(record["false_neg"])
+
+            if (args.fftcheckperiod is not None and args.fftsize is not None):
+                fftperiodicity=int(args.fftcheckperiod)
+                fftsize=int(args.fftsize)
+                incr=(192)*fftsize*(1+fftsize/fftperiodicity) #in order to take into account instruction duplication, which timing overhead has been taken into account in timing analysis
+                total_neg=total_neg+incr
+                tn=tn+incr
 
             fn_rate=100*fn/total_neg
             fp_rate=100*fp/total_pos
