@@ -18,8 +18,8 @@ u8 injectingErrors=0;
 #ifdef gaussianBench
 
 //at least one of them must be even
-#define IMG_HEIGHT 32
-#define IMG_WIDTH 32
+#define IMG_HEIGHT 128
+#define IMG_WIDTH 128
 
 #define KERNEL_SIZE 5
 
@@ -72,6 +72,134 @@ char train;
 #define LOOP2TOTAL (8+32*2)
 #define LOOP1TOTAL (LOOP2TOTAL*KERNEL_SIZE)
 #define CONVOLUTIONTOTAL (LOOP1TOTAL*KERNEL_SIZE/*+8*1+32*3*/)
+//static int convolution2D(int p_x, int p_y, int executionId){
+//	int k_r,offset_x,offset_y,i,j;
+//	float temp;
+//
+//	/*Kernel radius*/
+//	k_r=KERNEL_SIZE/2;
+//
+//
+//	//	FAULTDET_testing_injectFault32(p_x, executionId, 32*0, injectingErrors);
+//	//	FAULTDET_testing_injectFault32(p_y, executionId, 32*1, injectingErrors);
+//	//	FAULTDET_testing_injectFault32(k_r, executionId, 32*0, injectingErrors);
+//
+//	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
+//
+//		if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+//			unsigned char res=mat_in[p_x][p_y];
+//			//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
+//			return res;
+//		}
+//
+//	/*offset between kernel's indexes and array's ones*/
+//	offset_x=p_x-k_r;
+//	offset_y=p_y-k_r;
+//
+//	//	FAULTDET_testing_injectFault32(offset_x, executionId, 32*1+8*1, injectingErrors);
+//	//	FAULTDET_testing_injectFault32(offset_y, executionId, 32*2+8*1, injectingErrors);
+//
+//	temp=0;
+//
+//
+//	/*    for(i=p_x-k_r;i<=p_x+k_r;i++){
+//        for(j=p_y-k_r;j<=p_y+k_r;j++){
+//        	unsigned char in=mat_in[i+j][j];
+//            temp+=kernel[i-offset_x+j-offset_y][j-offset_y] * in;
+//            faultdet_vals[ctr]+=in;
+//        }
+//        ctr++;
+//    }*/
+//
+//	if (horizontalAccumulate) {
+//		for (int i=0; i<KERNEL_SIZE; i++) {
+//			faultdet_vals[i]=0;
+//		}
+//
+//		int loop1ctr=0;
+//		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+//			int loop2ctr=0;
+//			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
+//				unsigned char in=mat_in[i][j];
+//				float kernelin=kernel[i-offset_x][j-offset_y];
+//				FAULTDET_testing_injectFault8(in, executionId, LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				FAULTDET_testing_injectFault32(kernelin, executionId, 8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				temp+=kernelin * in;
+//				FAULTDET_testing_injectFault32(temp, executionId, 32*1+8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				faultdet_vals[loop2ctr]+=in;
+//				loop2ctr++;
+//			}
+//			loop1ctr++;
+//		}
+//
+//		float out=temp>oldtemp ? temp-oldtemp : oldtemp-temp;
+//
+//		int currVecSize=KERNEL_SIZE;
+//		while (currVecSize>5) {
+//			for (int i=0; i<KERNEL_SIZE-1; i+=2) {
+//				faultdet_vals[currVecSize]=faultdet_vals[currVecSize+1];
+//				currVecSize--;
+//				if (currVecSize<=5)
+//					break;
+//			}
+//		}
+//
+//		if (train) {
+//			FAULTDET_trainPoint(
+//					p_x*IMG_HEIGHT+p_y,
+//					0,  //checkId
+//					6,
+//					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
+//		} else {
+//			FAULTDET_testPoint(
+//#ifndef FAULTDETECTOR_EXECINSW
+//					&inst,
+//#endif
+//					p_x*IMG_HEIGHT+p_y/*p_x*IMG_WIDTH+p_y*/,
+//					0, //checkId
+//#ifdef detectionPerformanceMeasurement
+//					injectingErrors,
+//					-1,
+//					-1,
+//					executionId,
+//#endif
+//					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
+//					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
+//			//			uniIdCtr++;
+//		}
+//
+//
+//	} else {
+//		int loop1ctr=0;
+//		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
+//			int loop2ctr=0;
+//			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
+//				unsigned char in=mat_in[i][j];
+//				float kernelin=kernel[i-offset_x][j-offset_y];
+//				FAULTDET_testing_injectFault8(in, executionId, LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				FAULTDET_testing_injectFault32(kernelin, executionId, 8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				temp+=kernelin * in;
+//				FAULTDET_testing_injectFault32(temp, executionId, 32*1+8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
+//				faultdet_vals[loop1ctr]+=in;
+//				loop2ctr++;
+//			}
+//			loop1ctr++;
+//		}
+//	}
+//
+//	if (executionId>=0) {
+//		FAULTDET_testing_manual_compare_n_result(offset_x*(IMG_HEIGHT-k_r*2)+offset_y, temp);
+//	} else if (executionId==-1) {
+//		FAULTDET_testing_manual_result(temp, injectingErrors);
+//	}
+//
+//	horizontalAccumulate=!horizontalAccumulate;
+//	oldtemp=temp;
+//
+//	return temp;
+//}
+
+
 static int convolution2D(int p_x, int p_y, int executionId){
 	int k_r,offset_x,offset_y,i,j;
 	float temp;
@@ -86,11 +214,11 @@ static int convolution2D(int p_x, int p_y, int executionId){
 
 	/*kernel can be superimposed? if not we are on borders, then we keep the values unchanged*/
 
-		if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
-			unsigned char res=mat_in[p_x][p_y];
-			//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
-			return res;
-		}
+	if(p_x-k_r<0 || p_y-k_r<0 || p_x+k_r>=IMG_HEIGHT || p_y+k_r>=IMG_WIDTH){
+		unsigned char res=mat_in[p_x][p_y];
+		//		FAULTDET_testing_injectFault8(res, executionId, 32*1, injectingErrors);
+		return res;
+	}
 
 	/*offset between kernel's indexes and array's ones*/
 	offset_x=p_x-k_r;
@@ -117,22 +245,22 @@ static int convolution2D(int p_x, int p_y, int executionId){
 		}
 
 		int loop1ctr=0;
-		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1TOTAL
+		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
 			int loop2ctr=0;
-			for(j=p_y-k_r;j<=p_y+k_r;j++) { //LOOP2TOTAL
+			for(j=p_y-k_r;j<=p_y+k_r;j++){ //LOOP2
 				unsigned char in=mat_in[i][j];
 				float kernelin=kernel[i-offset_x][j-offset_y];
 				FAULTDET_testing_injectFault8(in, executionId, LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
 				FAULTDET_testing_injectFault32(kernelin, executionId, 8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
 				temp+=kernelin * in;
 				FAULTDET_testing_injectFault32(temp, executionId, 32*1+8*1+LOOP1TOTAL*loop1ctr+LOOP2TOTAL*loop2ctr, injectingErrors);
-				faultdet_vals[loop2ctr]+=in;
+				faultdet_vals[loop1ctr]-=in;
 				loop2ctr++;
 			}
 			loop1ctr++;
 		}
 
-		float out=temp>oldtemp ? temp-oldtemp : oldtemp-temp;
+		float diff=temp>oldtemp ? temp-oldtemp : oldtemp-temp;
 
 		int currVecSize=KERNEL_SIZE;
 		while (currVecSize>5) {
@@ -149,7 +277,7 @@ static int convolution2D(int p_x, int p_y, int executionId){
 					p_x*IMG_HEIGHT+p_y,
 					0,  //checkId
 					6,
-					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
+					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(diff));
 		} else {
 			FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
@@ -164,7 +292,7 @@ static int convolution2D(int p_x, int p_y, int executionId){
 					executionId,
 #endif
 					6, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(out));
+					&(faultdet_vals[0]), &(faultdet_vals[1]), &(faultdet_vals[2]), &(faultdet_vals[3]), &(faultdet_vals[4]), &(diff));
 			//			uniIdCtr++;
 		}
 
