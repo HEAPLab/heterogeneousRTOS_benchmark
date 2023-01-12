@@ -1038,10 +1038,10 @@ static void fft_routine_test(){
 		int n;
 		complex even_sum,odd_sum, even_sum2, odd_sum2;
 
-		float v1=0;
-		float v2=0;
-		float v3=0;
-		float v4=0;
+		contr.AOV[0]=0;
+		contr.AOV[1]=0;
+		contr.AOV[2]=0;
+		contr.AOV[3]=0;
 
 		even_sum.re=0;
 		even_sum.im=0;
@@ -1062,12 +1062,12 @@ static void fft_routine_test(){
 			tmp=complex_sum(tmp, n_term); //192
 
 			if (idx<CHECKPERIODICITY/2) {
-				v1+=array_in[n].re;
-				v3+=array_in[n].im;
+				contr.AOV[0]+=array_in[n].re;
+				contr.AOV[2]+=array_in[n].im;
 				idx++;
 			} else if (idx==CHECKPERIODICITY-1) {
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
+				contr.AOV[1]+=array_in[n].re;
+				contr.AOV[3]+=array_in[n].im;
 
 				mul=n*k;
 
@@ -1081,17 +1081,8 @@ static void fft_routine_test(){
 
 				contr.uniId=n;
 				contr.checkId=chkid;
-				//		contr.taskId=0;
-				//		contr.executionId=0;
-				//		contr.command=2;
-				contr.AOV[0]=v1;
-				contr.AOV[1]=v2;
-				contr.AOV[2]=v3;
-				contr.AOV[3]=v4;
 				contr.AOV[4]=tmp.re;
 				contr.AOV[5]=tmp.im;
-				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-				//		FAULTDET_Test(&contr);
 				FAULTDET_testPoint(&contr);
 
 				even_sum=complex_sum(even_sum,tmp); //192
@@ -1103,13 +1094,13 @@ static void fft_routine_test(){
 				tmp.im=0;
 				tmp.re=0;
 
-				v1=0;
-				v2=0;
-				v3=0;
-				v4=0;
+				contr.AOV[0]=0;
+				contr.AOV[1]=0;
+				contr.AOV[2]=0;
+				contr.AOV[3]=0;
 			} else {
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
+				contr.AOV[1]+=array_in[n].re;
+				contr.AOV[3]+=array_in[n].im;
 				idx++;
 			}
 #else
@@ -1134,12 +1125,12 @@ static void fft_routine_test(){
 			tmp=complex_sum(tmp,n_term); //192
 
 			if (idx<CHECKPERIODICITY/2) {
-				v1+=array_in[n].re;
-				v3+=array_in[n].im;
+				contr.AOV[0]+=array_in[n].re;
+				contr.AOV[2]+=array_in[n].im;
 				idx++;
 			} else if (idx==CHECKPERIODICITY-1) {
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
+				contr.AOV[1]+=array_in[n].re;
+				contr.AOV[3]+=array_in[n].im;
 
 				mul=n*k;
 				int chkid=checksNum-1;
@@ -1152,13 +1143,6 @@ static void fft_routine_test(){
 
 				contr.uniId=n;
 				contr.checkId=chkid;
-				//		contr.taskId=0;
-				//		contr.executionId=0;
-				//		contr.command=2;
-				contr.AOV[0]=v1;
-				contr.AOV[1]=v2;
-				contr.AOV[2]=v3;
-				contr.AOV[3]=v4;
 				contr.AOV[4]=tmp.re;
 				contr.AOV[5]=tmp.im;
 
@@ -1175,13 +1159,13 @@ static void fft_routine_test(){
 				tmp.im=0;
 				tmp.re=0;
 
-				v1=0;
-				v2=0;
-				v3=0;
-				v4=0;
+				contr.AOV[0]=0;
+				contr.AOV[1]=0;
+				contr.AOV[2]=0;
+				contr.AOV[3]=0;
 			} else {
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
+				contr.AOV[1]+=array_in[n].re;
+				contr.AOV[3]+=array_in[n].im;
 				idx++;
 			}
 #else
@@ -1278,10 +1262,10 @@ static void fft_routine_train(){
 		int n;
 		complex even_sum,odd_sum, even_sum2, odd_sum2;
 
-		float v1=0;
-		float v2=0;
-		float v3=0;
-		float v4=0;
+		contr.AOV[0]=0;
+		contr.AOV[1]=0;
+		contr.AOV[2]=0;
+		contr.AOV[3]=0;
 
 		even_sum.re=0;
 		even_sum.im=0;
@@ -1300,12 +1284,12 @@ static void fft_routine_train(){
 			tmp=complex_sum(tmp, n_term); //192
 
 			if (idx<CHECKPERIODICITY/2) {
-				v1+=array_in[n].re;
-				v3+=array_in[n].im;
+				contr.AOV[0]+=array_in[n].re;
+				contr.AOV[2]+=array_in[n].im;
 				idx++;
 			} else if (idx==CHECKPERIODICITY-1) {
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
+				contr.AOV[1]+=array_in[n].re;
+				contr.AOV[3]+=array_in[n].im;
 
 				mul=n*k;
 
@@ -1319,17 +1303,8 @@ static void fft_routine_train(){
 
 				contr.uniId=n;
 				contr.checkId=chkid;
-				//		contr.taskId=0;
-				//		contr.executionId=0;
-				//		contr.command=2;
-				contr.AOV[0]=v1;
-				contr.AOV[1]=v2;
-				contr.AOV[2]=v3;
-				contr.AOV[3]=v4;
 				contr.AOV[4]=tmp.re;
 				contr.AOV[5]=tmp.im;
-				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-				//		FAULTDET_Test(&contr);
 				FAULTDET_trainPoint(&contr);
 
 				even_sum=complex_sum(even_sum,tmp); //192
@@ -1338,13 +1313,13 @@ static void fft_routine_train(){
 				tmp.im=0;
 				tmp.re=0;
 
-				v1=0;
-				v2=0;
-				v3=0;
-				v4=0;
+				contr.AOV[0]=0;
+				contr.AOV[1]=0;
+				contr.AOV[2]=0;
+				contr.AOV[3]=0;
 			} else {
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
+				contr.AOV[1]+=array_in[n].re;
+				contr.AOV[3]+=array_in[n].im;
 				idx++;
 			}
 		}
@@ -1365,12 +1340,12 @@ static void fft_routine_train(){
 			tmp=complex_sum(tmp,n_term); //192
 
 			if (idx<CHECKPERIODICITY/2) {
-				v1+=array_in[n].re;
-				v3+=array_in[n].im;
+				contr.AOV[0]+=array_in[n].re;
+				contr.AOV[2]+=array_in[n].im;
 				idx++;
 			} else if (idx==CHECKPERIODICITY-1) {
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
+				contr.AOV[1]+=array_in[n].re;
+				contr.AOV[3]+=array_in[n].im;
 
 				mul=n*k;
 				int chkid=checksNum-1;
@@ -1383,18 +1358,8 @@ static void fft_routine_train(){
 
 				contr.uniId=n;
 				contr.checkId=chkid;
-				//		contr.taskId=0;
-				//		contr.executionId=0;
-				//		contr.command=2;
-				contr.AOV[0]=v1;
-				contr.AOV[1]=v2;
-				contr.AOV[2]=v3;
-				contr.AOV[3]=v4;
 				contr.AOV[4]=tmp.re;
 				contr.AOV[5]=tmp.im;
-
-				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-				//		FAULTDET_Test(&contr);
 				FAULTDET_trainPoint(&contr);
 
 				odd_sum=complex_sum(odd_sum,tmp); //192
@@ -1403,13 +1368,13 @@ static void fft_routine_train(){
 				tmp.im=0;
 				tmp.re=0;
 
-				v1=0;
-				v2=0;
-				v3=0;
-				v4=0;
+				contr.AOV[0]=0;
+				contr.AOV[1]=0;
+				contr.AOV[2]=0;
+				contr.AOV[3]=0;
 			} else {
-				v2+=array_in[n].re;
-				v4+=array_in[n].im;
+				contr.AOV[1]+=array_in[n].re;
+				contr.AOV[3]+=array_in[n].im;
 				idx++;
 			}
 		}
