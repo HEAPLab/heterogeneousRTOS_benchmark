@@ -30,7 +30,8 @@ def main():
     parser.add_argument('-r', '--regions')      # option that takes a value
     parser.add_argument('-t', '--train')      # option that takes a value
     parser.add_argument('-s', '--single')      # option that takes a value
-    parser.add_argument('-dse', '--designspaceexploration')      # option that takes a value
+    parser.add_argument('-dse3d', '--designspaceexploration3d')      # option that takes a value
+    parser.add_argument('-dse2dr', '--designspaceexploration2dregions')
     parser.add_argument('-fftT', '--fftcheckperiod')      # option that takes a value
     parser.add_argument('-fftsize', '--fftsize')      # option that takes a value
 
@@ -40,6 +41,14 @@ def main():
         regions_fp_rate=[]
         regions_fn_rate=[]
         regions_trainIterations=[]
+
+        region_fp_rate=[]
+        region_fn_rate=[]
+        region_trainIterations=[]
+        region_relerrmean=[]
+        region_relerrvariance=[]
+
+        
         for record in ijson.items(f, "item"):
 
             regions=record["regions"]
@@ -110,7 +119,12 @@ def main():
             regions_fp_rate.append(fp_r_clamped)
             regions_fn_rate.append(fn*100/total_neg)
 
-
+            if (args.designspaceexploration2dregions is not None and (int(args.designspaceexploration2dregions)==regions) or args.single is not None):
+                region_fp_rate.append(fp_r_not_clamped)
+                region_trainIterations.append(trainIterations)
+                region_relerrmean.append(relErrMean)
+                region_relerrvariance.append(relErrVar)
+                region_fn_rate.append(fn_rate)
 
             if (args.falsenegativethreshold is not None and (args.single is not None or trainIterations==int(args.train) and regions==int(args.regions))):
                 #relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
@@ -165,13 +179,70 @@ def main():
         ax.yaxis.set_major_formatter(ticker.PercentFormatter())
         ax.set_yscale('log')
         
-        ax.set_yscale('log')
         plt.xlabel("Accepted relative error threshold")
         plt.ylabel("False negatives rate")
         
         plt.show()
 
-    if (args.designspaceexploration is not None):
+    if (args.designspaceexploration2dregions is not None):
+        fig, ax = plt.subplots()
+        #region_2d_trainIterations=np.array(region_trainIterations)
+        region_2d_fp_rate=np.array(region_fp_rate)
+        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_fp_rate)
+        plt.gcf().subplots_adjust(left=0.2)
+        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
+        ax.set_yscale('log')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
+
+        plt.xlabel("Training iterations")
+        plt.ylabel("False positives rate")
+        
+        plt.show()
+
+        fig, ax = plt.subplots()
+        #region_2d_trainIterations=np.array(region_trainIterations)
+        region_2d_fn_rate=np.array(region_fn_rate)
+        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_fn_rate)
+        plt.gcf().subplots_adjust(left=0.2)
+        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
+        #ax.set_yscale('log')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
+
+        plt.xlabel("Training iterations")
+        plt.ylabel("False negatives rate")
+        
+        plt.show()
+
+        fig, ax = plt.subplots()
+        #region_2d_trainIterations=np.array(region_trainIterations)
+        region_2d_relerr_mean=np.array(region_relerrmean)
+        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_relerr_mean)
+        plt.gcf().subplots_adjust(left=0.2)
+        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
+        #ax.set_yscale('log')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
+
+        plt.xlabel("Training iterations")
+        plt.ylabel("False negatives relative error mean")
+        
+        plt.show()
+
+        fig, ax = plt.subplots()
+        #region_2d_trainIterations=np.array(region_trainIterations)
+        region_2d_relerr_variance=np.array(region_relerrvariance)
+        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_relerr_variance)
+        plt.gcf().subplots_adjust(left=0.2)
+        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
+        #ax.set_yscale('log')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
+
+        plt.xlabel("Training iterations")
+        plt.ylabel("False negatives relative error variance")
+        
+        plt.show()
+
+
+    if (args.designspaceexploration3d is not None):
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
         #X,Y=np.meshgrid(regions_x, regions_trainIterations)
         #Z=np.array(regions_fn_rate)
