@@ -70,6 +70,7 @@ def main():
 
             relErrMean=np.mean(relErrNum)
             relErrVar=np.var(relErrNum)
+            relErrMax = np.max(relErrNum)
 
             """
             precision=tp/total_pos
@@ -77,8 +78,30 @@ def main():
             recall=tp/(tp+(fn*scaling_factor))
             accuracy=(tp+tn*scaling_factor)/(total_pos+total_neg*scaling_factor)"""
 
-            print(f"regions {regions}, trainIterations {trainIterations}, testIterations {testIterations}\ntot pos {total_pos}, tp {tp}, fp {fp} fp rate {fp_rate} | tot neg {total_neg}, tn {tn}, fn {fn} fn rate {fn_rate} | rel err mean: {relErrMean} var: {relErrVar}\n") #| precision {precision}, recall {recall}, accuracy {accuracy}\n")
-            
+            #total_neg_tresh_1=tn+len(relErrNum)
+            #if (total_neg!=total_neg_tresh_1):
+            #    print("ERROR! total_neg!=total_neg_tresh")
+
+            #erthr=0
+            #fn_withthresh_1=0
+            #cont=True
+            #if (fp_rate<=1):
+            #    while(cont):
+            #        cont=False
+            #        for er in relErrNum:
+            #            if (isnan(er)):
+            #                print("ISNAN")
+            #            else:
+            #                if (er>erthr):
+            #                    fn_withthresh_1=fn_withthresh_1+1
+            #            if (fn_withthresh_1/total_neg_tresh_1>0.01):
+            #                cont=True
+            #                erthr=erthr+0.025
+            #                break
+            #if (fp_rate<=1):  
+            #    print(f"regions {regions}, trainIterations {trainIterations}, testIterations {testIterations}\ntot pos {total_pos}, tp {tp}, fp {fp} fp rate {fp_rate} | tot neg {total_neg}, tn {tn}, fn {fn} fn rate {fn_rate} | rel err mean: {relErrMean} max: {relErrMax} var: {relErrVar} accepted rel err threshold to get under 1% fn: fn:{fn_withthresh_1/total_neg_tresh_1}, thresh: {erthr}\n") #| precision {precision}, recall {recall}, accuracy {accuracy}\n")
+            #else:
+            print(f"regions {regions}, trainIterations {trainIterations}, testIterations {testIterations}\ntot pos {total_pos}, tp {tp}, fp {fp} fp rate {fp_rate} | tot neg {total_neg}, tn {tn}, fn {fn} fn rate {fn_rate} | rel err mean: {relErrMean} max: {relErrMax} var: {relErrVar}\n") #| precision {precision}, recall {recall}, accuracy {accuracy}\n")
             #for charts generation
             regions_x.append(regions)
             regions_trainIterations.append(trainIterations)
@@ -86,6 +109,8 @@ def main():
             fp_r_clamped= 4 if fp_r_not_clamped > 4 else fp_r_not_clamped
             regions_fp_rate.append(fp_r_clamped)
             regions_fn_rate.append(fn*100/total_neg)
+
+
 
             if (args.falsenegativethreshold is not None and (args.single is not None or trainIterations==int(args.train) and regions==int(args.regions))):
                 #relErrNum = np.asarray(record["relerr"], dtype=np.uint32)

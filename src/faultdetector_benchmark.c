@@ -240,10 +240,6 @@ static int convolution2D(int p_x, int p_y, int executionId){
     }*/
 
 	if (horizontalAccumulate) {
-		for (int i=0; i<KERNEL_SIZE; i++) {
-			faultdet_vals[i]=0;
-		}
-
 		int loop1ctr=0;
 		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
 			int loop2ctr=0;
@@ -298,6 +294,10 @@ static int convolution2D(int p_x, int p_y, int executionId){
 
 
 	} else {
+		for (int i=0; i<KERNEL_SIZE; i++) {
+			faultdet_vals[i]=0;
+		}
+
 		int loop1ctr=0;
 		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
 			int loop2ctr=0;
@@ -1881,7 +1881,7 @@ void latnav(int executionId) {
 				1,
 				1,  //checkId
 				4,
-				&(curr_roll), &(actual_roll_rate), &curr_roll_rate, &actual_ailerons);
+				&(curr_roll), &(actual_roll_rate), &curr_roll_rate, &desired_ailerons);
 	}  else {
 		FAULTDET_testPoint(
 #ifndef FAULTDETECTOR_EXECINSW
@@ -1896,7 +1896,7 @@ void latnav(int executionId) {
 				executionId,
 #endif
 				4, //SIZE OF THIS SPECIFIC AOV (<=FAULTDETECTOR_MAX_AOV_DIM , unused elements will be initialised to 0)
-				&(curr_roll), &(actual_roll_rate), &curr_roll_rate, &actual_ailerons);
+				&(curr_roll), &(actual_roll_rate), &curr_roll_rate, &desired_ailerons);
 	}
 
 	pid_roll.backpropagation = actual_ailerons - desired_ailerons;
@@ -2006,7 +2006,7 @@ int main(int argc, char * const argv[])
 		init_img_matrix();
 		gauss_filter_routine(-1, -1, -1);
 		if (!FAULTDET_testing_loggin_faultdetected) {
-			while (NoFp<49) {
+			while (NoFp<3) {
 				for (int executionId=0 ;executionId<CONVOLUTIONTOTAL; executionId++) {
 					horizontalAccumulate=0x0;
 					for(int i=KERNEL_SIZE/2;i<IMG_HEIGHT-KERNEL_SIZE/2;i++){
