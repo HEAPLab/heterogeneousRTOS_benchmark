@@ -23,7 +23,7 @@
 
 #include "perf_timer.h"
 
-//#define FAULTDETECTOR_EXECINSW
+#define FAULTDETECTOR_EXECINSW
 
 #define gaussianBench
 //#define ANNBench
@@ -233,7 +233,6 @@ static void gaussian_kernel_init(){
  */
 char horizontalAccumulate=0x0;
 float oldtemp;
-float faultdet_vals[KERNEL_SIZE];
 int uniIdCtr=0;
 float diff;
 
@@ -256,10 +255,6 @@ static int convolution2D_train(int p_x, int p_y){
 	temp=0;
 
 	if (horizontalAccumulate) {
-		for (int i=0; i<KERNEL_SIZE; i++) {
-			faultdet_vals[i]=0;
-		}
-
 		int loop1ctr=0;
 		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
 			int loop2ctr=0;
@@ -267,7 +262,7 @@ static int convolution2D_train(int p_x, int p_y){
 				unsigned char in=mat_in[i][j];
 				float kernelin=kernel[i-offset_x][j-offset_y];
 				temp+=kernelin * in;
-				faultdet_vals[loop1ctr]-=in;
+				contr.AOV[loop1ctr]-=in;
 				loop2ctr++;
 			}
 			loop1ctr++;
@@ -277,14 +272,11 @@ static int convolution2D_train(int p_x, int p_y){
 
 		contr.uniId=uniIdCtr;
 		contr.checkId=0;
-		//		contr.taskId=0;
-		//		contr.executionId=0;
-		//		contr.command=2;
-		contr.AOV[0]=faultdet_vals[0];
-		contr.AOV[1]=faultdet_vals[1];
-		contr.AOV[2]=faultdet_vals[2];
-		contr.AOV[3]=faultdet_vals[3];
-		contr.AOV[4]=faultdet_vals[4];
+//		contr.AOV[0]=faultdet_vals[0];
+//		contr.AOV[1]=faultdet_vals[1];
+//		contr.AOV[2]=faultdet_vals[2];
+//		contr.AOV[3]=faultdet_vals[3];
+//		contr.AOV[4]=faultdet_vals[4];
 		contr.AOV[5]=diff;
 
 		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
@@ -292,6 +284,9 @@ static int convolution2D_train(int p_x, int p_y){
 		FAULTDET_trainPoint(&contr);
 		uniIdCtr++;
 	} else {
+		for (int i=0; i<KERNEL_SIZE; i++) {
+			contr.AOV[i]=0;
+		}
 		int loop1ctr=0;
 		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
 			int loop2ctr=0;
@@ -299,7 +294,7 @@ static int convolution2D_train(int p_x, int p_y){
 				unsigned char in=mat_in[i][j];
 				float kernelin=kernel[i-offset_x][j-offset_y];
 				temp+=kernelin * in;
-				faultdet_vals[loop1ctr]+=in;
+				contr.AOV[loop1ctr]+=in;
 				loop2ctr++;
 			}
 			loop1ctr++;
@@ -309,6 +304,7 @@ static int convolution2D_train(int p_x, int p_y){
 	horizontalAccumulate=!horizontalAccumulate;
 	return temp;
 }
+
 
 
 static int convolution2D_test(int p_x, int p_y){
@@ -330,10 +326,6 @@ static int convolution2D_test(int p_x, int p_y){
 	temp=0;
 
 	if (horizontalAccumulate) {
-		for (int i=0; i<KERNEL_SIZE; i++) {
-			faultdet_vals[i]=0;
-		}
-
 		int loop1ctr=0;
 		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
 			int loop2ctr=0;
@@ -341,7 +333,7 @@ static int convolution2D_test(int p_x, int p_y){
 				unsigned char in=mat_in[i][j];
 				float kernelin=kernel[i-offset_x][j-offset_y];
 				temp+=kernelin * in;
-				faultdet_vals[loop1ctr]-=in;
+				contr.AOV[loop1ctr]-=in;
 				loop2ctr++;
 			}
 			loop1ctr++;
@@ -351,14 +343,11 @@ static int convolution2D_test(int p_x, int p_y){
 
 		contr.uniId=uniIdCtr;
 		contr.checkId=0;
-		//		contr.taskId=0;
-		//		contr.executionId=0;
-		//		contr.command=2;
-		contr.AOV[0]=faultdet_vals[0];
-		contr.AOV[1]=faultdet_vals[1];
-		contr.AOV[2]=faultdet_vals[2];
-		contr.AOV[3]=faultdet_vals[3];
-		contr.AOV[4]=faultdet_vals[4];
+//		contr.AOV[0]=faultdet_vals[0];
+//		contr.AOV[1]=faultdet_vals[1];
+//		contr.AOV[2]=faultdet_vals[2];
+//		contr.AOV[3]=faultdet_vals[3];
+//		contr.AOV[4]=faultdet_vals[4];
 		contr.AOV[5]=diff;
 
 		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
@@ -366,6 +355,9 @@ static int convolution2D_test(int p_x, int p_y){
 		FAULTDET_testPoint(&contr);
 		uniIdCtr++;
 	} else {
+		for (int i=0; i<KERNEL_SIZE; i++) {
+			contr.AOV[i]=0;
+		}
 		int loop1ctr=0;
 		for(i=p_x-k_r;i<=p_x+k_r;i++){ //LOOP1
 			int loop2ctr=0;
@@ -373,7 +365,7 @@ static int convolution2D_test(int p_x, int p_y){
 				unsigned char in=mat_in[i][j];
 				float kernelin=kernel[i-offset_x][j-offset_y];
 				temp+=kernelin * in;
-				faultdet_vals[loop1ctr]+=in;
+				contr.AOV[loop1ctr]+=in;
 				loop2ctr++;
 			}
 			loop1ctr++;
@@ -2374,12 +2366,12 @@ static void prvTaskFour( void *pvParameters )
 
 	gaussian_kernel_init();
 
-	for (int i=-1600; i<-1; i++) {
+	for (int i=-1000; i<-1; i++) {
 		init_img_matrix();
 		gauss_filter_routine_train();
 	}
 
-	for (int i=0; i<50000; i++) {
+	for (int i=0; i<10000; i++) {
 		init_img_matrix();
 		gauss_filter_routine_test();
 	}
