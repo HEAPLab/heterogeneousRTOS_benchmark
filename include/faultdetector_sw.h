@@ -9,7 +9,7 @@
 //#define COMMAND_TEST 2
 //#define COMMAND_TRAIN 3
 
-#define gaussianBench
+#define FFTBench
 
 #ifndef XFAULTDETECTOR_H
 #define FAULTDETECTOR_MAX_CHECKS 32

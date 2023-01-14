@@ -1,7 +1,7 @@
 //#define latnavBench
-//#define FFTBench
+#define FFTBench
 //#define ANNBench
-#define gaussianBench
+//#define gaussianBench
 
 #define FAULTDETECTOR_EXECINSW
 #define detectionPerformanceMeasurement
@@ -2006,7 +2006,7 @@ int main(int argc, char * const argv[])
 		init_img_matrix();
 		gauss_filter_routine(-1, -1, -1);
 		if (!FAULTDET_testing_loggin_faultdetected) {
-			while (NoFp<3) {
+			while (NoFp<15) {
 				for (int executionId=0 ;executionId<CONVOLUTIONTOTAL; executionId++) {
 					horizontalAccumulate=0x0;
 					for(int i=KERNEL_SIZE/2;i<IMG_HEIGHT-KERNEL_SIZE/2;i++){
@@ -2106,7 +2106,7 @@ int main(int argc, char * const argv[])
 		}
 		fft_routine(-1,0);
 		if (!FAULTDET_testing_loggin_faultdetected) {
-			if (NoFp<1) {
+			if (NoFp<3) {
 				//start to inject faults
 				for (int k=0; k<FFT_LENGTH; k++) {
 					for (int executionId=0; executionId<LOOP1TOTAL; executionId++) {

@@ -7,6 +7,7 @@ import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
+import math
 #from scipy.stats import gaussian_kde
 #import seaborn
 
@@ -17,8 +18,7 @@ def log_tick_formatter(val, pos=None):
 
 
 #fntresholds=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-fntresholds=np.linspace(0.0, 3.0, num=30)
-fn_withthresh=np.zeros(len(fntresholds), dtype=int)
+#fn_withthresh=np.zeros(len(fntresholds), dtype=int)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -27,6 +27,7 @@ def main():
                     epilog = 'Text at the bottom of help')
     parser.add_argument('filename')           # positional argument
     parser.add_argument('-fnt', '--falsenegativethreshold')      # option that takes a value
+    parser.add_argument('-fntu', '--falsenegativethresholdupbound')      # option that takes a value
     parser.add_argument('-r', '--regions')      # option that takes a value
     parser.add_argument('-t', '--train')      # option that takes a value
     parser.add_argument('-s', '--single')      # option that takes a value
@@ -36,6 +37,20 @@ def main():
     parser.add_argument('-fftsize', '--fftsize')      # option that takes a value
 
     args=parser.parse_args()
+
+    lowiter=int(0.05/0.0025)
+    curr=0
+    hiiter=int((float(args.falsenegativethresholdupbound)-0.05)/0.01)
+    fntresholds=np.zeros(lowiter+hiiter, dtype=float)
+    for ctr in range(lowiter+hiiter):
+        if (ctr<lowiter):
+            curr=curr+0.0025
+        else:
+            curr=curr+0.01
+        fntresholds[ctr]=curr
+
+    #fntresholds=np.linspace(0.0, 3.0, num=30)
+    fn_withthresh=np.zeros(len(fntresholds), dtype=int)
     with open(args.filename, "rb") as f:
         regions_x=[]
         regions_fp_rate=[]
@@ -47,6 +62,8 @@ def main():
         region_trainIterations=[]
         region_relerrmean=[]
         region_relerrvariance=[]
+        region_relerrmin=[]
+        region_relerrmax=[]
 
         
         for record in ijson.items(f, "item"):
@@ -77,9 +94,13 @@ def main():
             relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
             relErrNum = relErrNum.view(dtype=np.float32)
 
-            relErrMean=np.mean(relErrNum)
-            relErrVar=np.var(relErrNum)
-            relErrMax = np.max(relErrNum)
+            relErrMean=np.mean(relErrNum)*100
+            relErrVar=np.var(relErrNum)*100
+            relErrMin = np.min(relErrNum)*100
+            relErrMax = np.max(relErrNum)*100
+
+            region_relerrmin.append(relErrMin)
+            region_relerrmax.append(relErrMax)
 
             """
             precision=tp/total_pos
@@ -118,6 +139,7 @@ def main():
             fp_r_clamped= 4 if fp_r_not_clamped > 4 else fp_r_not_clamped
             regions_fp_rate.append(fp_r_clamped)
             regions_fn_rate.append(fn*100/total_neg)
+
 
             if (args.designspaceexploration2dregions is not None and (int(args.designspaceexploration2dregions)==regions) or args.single is not None):
                 region_fp_rate.append(fp_r_not_clamped)
@@ -172,78 +194,28 @@ def main():
             #    print("singular matrix\n")
     
     if (args.falsenegativethreshold is not None):
-        fig, ax = plt.subplots()
+        #fig, ax = plt.subplots(figsize=(8, 6))
         relerrarr=(np.array(fn_withthresh)/np.array(total_neg))*np.array(100)
-        ax.plot(fntresholds, (relerrarr))
+        #ax.set_ylim([pow(10, math.floor(math.log10(np.min(relerrarr)))), pow(10, math.ceil(math.log10(np.max(relerrarr))))])
+        plt.grid(visible=True, which='major', color='0.6')
+        plt.grid(visible=True, which='minor', color='0.8')
+        fig = plt.plot(np.array(fntresholds)*np.array(100), (relerrarr))
         plt.gcf().subplots_adjust(left=0.2)
-        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
+        ax=plt.gca()
+        ax.xaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
         ax.set_yscale('log')
+        plt.tick_params(axis='y', which='minor')
+        #ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        #ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}%'.format(int(x)))))
+        ax.yaxis.set_minor_formatter(ticker.LogFormatter(10, labelOnlyBase=False, minor_thresholds=(np.inf, np.inf)))
         
-        plt.xlabel("Accepted relative error threshold")
-        plt.ylabel("False negatives rate")
+        plt.xlabel("Accepted relative error threshold [%]")
+        plt.ylabel("False negatives rate [%]")
         
-        plt.show()
-
-    if (args.designspaceexploration2dregions is not None):
-        fig, ax = plt.subplots()
-        #region_2d_trainIterations=np.array(region_trainIterations)
-        region_2d_fp_rate=np.array(region_fp_rate)
-        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_fp_rate)
-        plt.gcf().subplots_adjust(left=0.2)
-        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
-        ax.set_yscale('log')
-        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
-
-        plt.xlabel("Training iterations")
-        plt.ylabel("False positives rate")
-        
-        plt.show()
-
-        fig, ax = plt.subplots()
-        #region_2d_trainIterations=np.array(region_trainIterations)
-        region_2d_fn_rate=np.array(region_fn_rate)
-        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_fn_rate)
-        plt.gcf().subplots_adjust(left=0.2)
-        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
-        #ax.set_yscale('log')
-        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
-
-        plt.xlabel("Training iterations")
-        plt.ylabel("False negatives rate")
-        
-        plt.show()
-
-        fig, ax = plt.subplots()
-        #region_2d_trainIterations=np.array(region_trainIterations)
-        region_2d_relerr_mean=np.array(region_relerrmean)
-        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_relerr_mean)
-        plt.gcf().subplots_adjust(left=0.2)
-        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
-        #ax.set_yscale('log')
-        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
-
-        plt.xlabel("Training iterations")
-        plt.ylabel("False negatives relative error mean")
-        
-        plt.show()
-
-        fig, ax = plt.subplots()
-        #region_2d_trainIterations=np.array(region_trainIterations)
-        region_2d_relerr_variance=np.array(region_relerrvariance)
-        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_relerr_variance)
-        plt.gcf().subplots_adjust(left=0.2)
-        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
-        #ax.set_yscale('log')
-        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
-
-        plt.xlabel("Training iterations")
-        plt.ylabel("False negatives relative error variance")
-        
-        plt.show()
-
+        #ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
 
     if (args.designspaceexploration3d is not None):
-        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        fig, ax = plt.subplots(figsize(8,6), subplot_kw={"projection": "3d"})
         #X,Y=np.meshgrid(regions_x, regions_trainIterations)
         #Z=np.array(regions_fn_rate)
         surf=ax.plot_trisurf(np.log2(regions_x).astype(int), np.log2((np.array(regions_trainIterations)/100)).astype(int), regions_fn_rate, cmap=cm.coolwarm, linewidth=0, antialiased=False)
@@ -251,7 +223,9 @@ def main():
         #ax.set_zlabel('Log(2, Regions)')
         ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))))))
         ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y,pos: ('{:d}'.format(int(pow(2, y))*100))))
-        ax.zaxis.set_major_formatter(ticker.PercentFormatter())
+        ax.zaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
+
+        #{x/math.pow(10, math.floor(math.log10(x)))}x10
 
         ax.zaxis.set_tick_params(pad=0.2)
 
@@ -263,7 +237,7 @@ def main():
 
 
 
-        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        fig, ax = plt.subplots(figsize(8,8), subplot_kw={"projection": "3d"})
         #X,Y=np.meshgrid(regions_x, regions_trainIterations)
         #Z=np.array(regions_fn_rate)
         surf=ax.plot_trisurf(np.log2(regions_x).astype(int), np.log2((np.array(regions_trainIterations)/100)).astype(int), regions_fp_rate, cmap=cm.coolwarm, linewidth=0, antialiased=False)
@@ -271,7 +245,7 @@ def main():
         #ax.set_zlabel('Log(2, Regions)'
         ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))))))
         ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y,pos: ('{:d}'.format(int(pow(2, y))*100))))
-        ax.zaxis.set_major_formatter(ticker.PercentFormatter())
+        ax.zaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
     #  fig.colorbar(surf, orientation="vertical", pad=0.2)
 
 
@@ -282,8 +256,110 @@ def main():
         ax.set_ylabel('Training iterations')
         ax.set_zlabel('False positives rate')
 
-        plt.show()
 
+    if (args.designspaceexploration2dregions is not None):
+        fig, ax = plt.subplots(figsize=(8, 6))
+        plt.grid(visible=True, which='major', color='0.6')
+        plt.grid(visible=True, which='minor', color='0.8')
+        ax = plt.gca()
+        #plt.style.use('classic')
+        #region_2d_trainIterations=np.array(region_trainIterations)
+        region_2d_fp_rate=np.array(region_fp_rate)
+        ax.set_ylim([pow(10, math.floor(math.log10(np.min(region_2d_fp_rate)))), pow(10, math.ceil(math.log10(np.max(region_2d_fp_rate))))])
+        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_fp_rate,marker="o")
+        ax.yaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
+        #ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(4))
+        ax.tick_params(axis='y', which='minor', bottom=False)
+        plt.gcf().subplots_adjust(left=0.2)
+        ax.set_yscale('log')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
+
+        plt.xlabel("Training iterations")
+        plt.ylabel("False positives rate [%]")
+        
+        #plt.show()
+        
+        
+        fig, ax = plt.subplots(figsize=(8, 6))
+        plt.grid(visible=True, which='major', color='0.6')
+        plt.grid(visible=True, which='minor', color='0.8')
+        #region_2d_trainIterations=np.array(region_trainIterations)
+        region_2d_relerr_mean=np.array(region_relerrmean)
+        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_relerr_mean,marker="o")
+        #ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(4))
+        ax.tick_params(axis='y', which='minor', bottom=False)
+        plt.gcf().subplots_adjust(left=0.2)
+        #ax.set_yscale('log')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
+
+
+        plt.xlabel("Training iterations")
+        plt.ylabel("False negatives relative error mean")
+        
+        #plt.show()
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        plt.grid(visible=True, which='major', color='0.6')
+        plt.grid(visible=True, which='minor', color='0.8')
+        #region_2d_trainIterations=np.array(region_trainIterations)
+        region_2d_relerr_variance=np.array(region_relerrvariance)
+        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_relerr_variance,marker="o")
+        #ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(4))
+        ax.tick_params(axis='y', which='minor', bottom=False)
+        plt.gcf().subplots_adjust(left=0.2)
+        #ax.set_yscale('log')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
+
+
+        plt.xlabel("Training iterations")
+        plt.ylabel("False negatives relative error variance")
+        
+        #plt.show()
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        plt.grid(visible=True, which='major', color='0.6')
+        plt.grid(visible=True, which='minor', color='0.8')
+        #region_2d_trainIterations=np.array(region_trainIterations)
+        region_2d_fn_rate=np.array(region_fn_rate)
+        ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_fn_rate,marker="o")
+        ax.yaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
+        #ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(4))
+        ax.tick_params(axis='y', which='minor', bottom=False)
+        plt.gcf().subplots_adjust(left=0.2)
+        #ax.set_yscale('log')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
+
+        plt.xlabel("Training iterations")
+        plt.ylabel("False negatives rate [%]")
+        
+        #plt.show()
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        plt.style.use('classic')
+        plt.grid(visible=True, which='major', color='0.6')
+        plt.grid(visible=True, which='minor', color='0.8')
+
+        #region_2d_trainIterations=np.array(region_trainIterations)
+        region_2d_relerr_mean=np.array(region_relerrmean)
+        region_2d_relerr_lo=(region_2d_relerr_mean-np.array(region_relerrmin))
+        region_2d_relerr_hi=(np.array(region_relerrmax)-region_2d_relerr_mean)
+
+        ax.errorbar(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_relerr_mean, yerr=[region_2d_relerr_lo, region_2d_relerr_hi], fmt='o', markersize=8, capsize=10)
+
+        #plt.gcf().subplots_adjust(left=0.2)
+        ax.yaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
+        #ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(4))
+        #ax.yaxis.set_minor_formatter(ticker.FormatStrFormatter("%.1f"))
+        #ax.tick_params(axis='y', which='minor', bottom=False)
+        plt.gcf().subplots_adjust(left=0.2)
+        ax.set_yscale('log')
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}'.format(int(pow(2, x))*100))))
+
+        plt.xlabel("Training iterations")
+        plt.ylabel("False negatives relative error [%]")
+        
+    if (args.falsenegativethreshold is not None or args.designspaceexploration3d is not None or args.designspaceexploration2dregions is not None):
+        plt.show()
 
 if __name__ == "__main__":
     main()
