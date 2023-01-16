@@ -5,6 +5,8 @@ from math import isnan
 
 import matplotlib.ticker as ticker
 import matplotlib.pyplot as plt
+import matplotlib.scale as scl
+import matplotlib.axis as axis
 import numpy as np
 from matplotlib import cm
 import math
@@ -35,179 +37,220 @@ def main():
     parser.add_argument('-dse2dr', '--designspaceexploration2dregions')
     parser.add_argument('-fftT', '--fftcheckperiod')      # option that takes a value
     parser.add_argument('-fftsize', '--fftsize')      # option that takes a value
+    parser.add_argument('-pm', '--precisionmultiplier')      # option that takes a value
+    parser.add_argument('-fntlogxf', '--falsenegativethresholdlogxformatter')      # option that takes a value
+    parser.add_argument('-f2', '--filename2')      # option that takes a value
+
 
     args=parser.parse_args()
 
-    lowiter=int(0.05/0.0025)
+    lowprec=0.0001/int(args.precisionmultiplier)
+    middleprec=0.001/int(args.precisionmultiplier)
+    hiprec=0.01/int(args.precisionmultiplier)
+    lowiter=int(0.01/0.0001)
+    middleiter=lowiter+int((0.1-0.01)/0.001)
     curr=0
-    hiiter=int((float(args.falsenegativethresholdupbound)-0.05)/0.01)
-    fntresholds=np.zeros(lowiter+hiiter, dtype=float)
-    for ctr in range(lowiter+hiiter):
-        if (ctr<lowiter):
-            curr=curr+0.0025
-        else:
-            curr=curr+0.01
+    hiiter=middleiter+int((float(args.falsenegativethresholdupbound)-0.1)/0.01)
+    fntresholds=np.zeros(hiiter+1, dtype=float)
+    for ctr in range(hiiter+1):
         fntresholds[ctr]=curr
+        if (ctr<lowiter):
+            curr=curr+lowprec
+        else:
+            if (ctr<middleiter):
+                 curr=curr+middleprec
+            else:
+                curr=curr+hiprec
 
     #fntresholds=np.linspace(0.0, 3.0, num=30)
     fn_withthresh=np.zeros(len(fntresholds), dtype=int)
-    with open(args.filename, "rb") as f:
-        regions_x=[]
-        regions_fp_rate=[]
-        regions_fn_rate=[]
-        regions_trainIterations=[]
+    filenames=[args.filename]
+    if (args.filename2 is not None):
+        filenames.append(args.filename2)
 
-        region_fp_rate=[]
-        region_fn_rate=[]
-        region_trainIterations=[]
-        region_relerrmean=[]
-        region_relerrvariance=[]
-        region_relerrmin=[]
-        region_relerrmax=[]
+    regions_x=[]
+    regions_fp_rate=[]
+    regions_fn_rate=[]
+    regions_trainIterations=[]
 
-        
-        for record in ijson.items(f, "item"):
+    region_fp_rate=[]
+    region_fn_rate=[]
+    region_trainIterations=[]
+    region_relerrmean=[]
+    region_relerrvariance=[]
+    region_relerrmin=[]
+    region_relerrmax=[]
+    for flname in filenames:
+        with open(flname, "rb") as f:
+            for record in ijson.items(f, "item"):
 
-            regions=record["regions"]
+                regions=record["regions"]
 
-            trainIterations=record["trainIterations"]
-            testIterations=record["testIterations"]
+                trainIterations=record["trainIterations"]
+                testIterations=record["testIterations"]
 
-            total_pos=int(record["total_pos"])
-            fp=int(record["false_pos"])
-            tp=int(record["true_pos"])
+                total_pos=int(record["total_pos"])
+                fp=int(record["false_pos"])
+                tp=int(record["true_pos"])
 
-            total_neg=int(record["true_neg"])+int(record["false_neg"])
-            tn=int(record["true_neg"])
-            fn=int(record["false_neg"])
+                total_neg=int(record["true_neg"])+int(record["false_neg"])
+                tn=int(record["true_neg"])
+                fn=int(record["false_neg"])
 
-            if (args.fftcheckperiod is not None and args.fftsize is not None):
-                fftperiodicity=int(args.fftcheckperiod)
-                fftsize=int(args.fftsize)
-                incr=(192)*fftsize*(1+fftsize/fftperiodicity) #in order to take into account instruction duplication, which timing overhead has been taken into account in timing analysis
-                total_neg=total_neg+incr
-                tn=tn+incr
+                if (args.fftcheckperiod is not None and args.fftsize is not None):
+                    fftperiodicity=int(args.fftcheckperiod)
+                    fftsize=int(args.fftsize)
+                    incr=(192)*fftsize*(1+fftsize/fftperiodicity) #in order to take into account instruction duplication, which timing overhead has been taken into account in timing analysis
+                    total_neg=total_neg+incr
+                    tn=tn+incr
 
-            fn_rate=100*fn/total_neg
-            fp_rate=100*fp/total_pos
+                fn_rate=100*fn/total_neg
+                fp_rate=100*fp/total_pos
 
-            relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
-            relErrNum = relErrNum.view(dtype=np.float32)
+                relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
+                relErrNum = relErrNum.view(dtype=np.float32)
 
-            relErrMean=np.mean(relErrNum)*100
-            relErrVar=np.var(relErrNum)*100
-            relErrMin = np.min(relErrNum)*100
-            relErrMax = np.max(relErrNum)*100
+                relErrMean=np.mean(relErrNum)*100
+                relErrVar=np.var(relErrNum)*100
+                relErrMin = np.min(relErrNum)*100
+                relErrMax = np.max(relErrNum)*100
 
-            region_relerrmin.append(relErrMin)
-            region_relerrmax.append(relErrMax)
-
-            """
-            precision=tp/total_pos
-            scaling_factor=total_pos/total_neg
-            recall=tp/(tp+(fn*scaling_factor))
-            accuracy=(tp+tn*scaling_factor)/(total_pos+total_neg*scaling_factor)"""
-
-            #total_neg_tresh_1=tn+len(relErrNum)
-            #if (total_neg!=total_neg_tresh_1):
-            #    print("ERROR! total_neg!=total_neg_tresh")
-
-            #erthr=0
-            #fn_withthresh_1=0
-            #cont=True
-            #if (fp_rate<=1):
-            #    while(cont):
-            #        cont=False
-            #        for er in relErrNum:
-            #            if (isnan(er)):
-            #                print("ISNAN")
-            #            else:
-            #                if (er>erthr):
-            #                    fn_withthresh_1=fn_withthresh_1+1
-            #            if (fn_withthresh_1/total_neg_tresh_1>0.01):
-            #                cont=True
-            #                erthr=erthr+0.025
-            #                break
-            #if (fp_rate<=1):  
-            #    print(f"regions {regions}, trainIterations {trainIterations}, testIterations {testIterations}\ntot pos {total_pos}, tp {tp}, fp {fp} fp rate {fp_rate} | tot neg {total_neg}, tn {tn}, fn {fn} fn rate {fn_rate} | rel err mean: {relErrMean} max: {relErrMax} var: {relErrVar} accepted rel err threshold to get under 1% fn: fn:{fn_withthresh_1/total_neg_tresh_1}, thresh: {erthr}\n") #| precision {precision}, recall {recall}, accuracy {accuracy}\n")
-            #else:
-            print(f"regions {regions}, trainIterations {trainIterations}, testIterations {testIterations}\ntot pos {total_pos}, tp {tp}, fp {fp} fp rate {fp_rate} | tot neg {total_neg}, tn {tn}, fn {fn} fn rate {fn_rate} | rel err mean: {relErrMean} max: {relErrMax} var: {relErrVar}\n") #| precision {precision}, recall {recall}, accuracy {accuracy}\n")
-            #for charts generation
-            regions_x.append(regions)
-            regions_trainIterations.append(trainIterations)
-            fp_r_not_clamped=fp*100/total_pos
-            fp_r_clamped= 4 if fp_r_not_clamped > 4 else fp_r_not_clamped
-            regions_fp_rate.append(fp_r_clamped)
-            regions_fn_rate.append(fn*100/total_neg)
-
-
-            if (args.designspaceexploration2dregions is not None and (int(args.designspaceexploration2dregions)==regions) or args.single is not None):
-                region_fp_rate.append(fp_r_not_clamped)
-                region_trainIterations.append(trainIterations)
-                region_relerrmean.append(relErrMean)
-                region_relerrvariance.append(relErrVar)
-                region_fn_rate.append(fn_rate)
-
-            if (args.falsenegativethreshold is not None and (args.single is not None or trainIterations==int(args.train) and regions==int(args.regions))):
-                #relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
-                #relErrNum = relErrNum.view(dtype=np.float32)
-                fn_withthresh[0]=fn
-                total_neg_tresh=tn+len(relErrNum)
-                if (total_neg!=total_neg_tresh):
-                    print("ERROR! total_neg!=total_neg_tresh")
-
-                for er in relErrNum:
-                    for thri in range(1, len(fntresholds)):
-                        if (isnan(er)):
-                            print("ISNAN")
-                        else:
-                            if (er>fntresholds[thri]):
-                                fn_withthresh[thri]=fn_withthresh[thri]+1
+                region_relerrmin.append(relErrMin)
+                region_relerrmax.append(relErrMax)
 
                 """
-                print(f"TOTAL {total_neg_tresh} | ")
-                for thri in range(len(fntresholds)):
-                    print(f"THRESH: {fntresholds[thri]} FN: {fn_withthresh[thri]}")
-                """
-            #print(len(relErrNum))
-            #minErr=np.floor(np.amin(relErrNum))
-            #maxErr=np.ceil(np.amax(relErrNum))
+                precision=tp/total_pos
+                scaling_factor=total_pos/total_neg
+                recall=tp/(tp+(fn*scaling_factor))
+                accuracy=(tp+tn*scaling_factor)/(total_pos+total_neg*scaling_factor)"""
 
-            #try:
-                #density = gaussian_kde(relErrNum)
-                #x_vals = np.linspace(minErr,maxErr,200)
-                #density.covariance_factor = lambda : .5 #Smoothing parameter
-                        #sns.kdeplot(relErrNum, bw_adjust=.25)
+                #total_neg_tresh_1=tn+len(relErrNum)
+                #if (total_neg!=total_neg_tresh_1):
+                #    print("ERROR! total_neg!=total_neg_tresh")
+
+                #erthr=0
+                #fn_withthresh_1=0
+                #cont=True
+                #if (fp_rate<=1):
+                #    while(cont):
+                #        cont=False
+                #        for er in relErrNum:
+                #            if (isnan(er)):
+                #                print("ISNAN")
+                #            else:
+                #                if (er>erthr):
+                #                    fn_withthresh_1=fn_withthresh_1+1
+                #            if (fn_withthresh_1/total_neg_tresh_1>0.01):
+                #                cont=True
+                #                erthr=erthr+0.025
+                #                break
+                #if (fp_rate<=1):  
+                #    print(f"regions {regions}, trainIterations {trainIterations}, testIterations {testIterations}\ntot pos {total_pos}, tp {tp}, fp {fp} fp rate {fp_rate} | tot neg {total_neg}, tn {tn}, fn {fn} fn rate {fn_rate} | rel err mean: {relErrMean} max: {relErrMax} var: {relErrVar} accepted rel err threshold to get under 1% fn: fn:{fn_withthresh_1/total_neg_tresh_1}, thresh: {erthr}\n") #| precision {precision}, recall {recall}, accuracy {accuracy}\n")
+                #else:
+                print(f"regions {regions}, trainIterations {trainIterations}, testIterations {testIterations}\ntot pos {total_pos}, tp {tp}, fp {fp} fp rate {fp_rate} | tot neg {total_neg}, tn {tn}, fn {fn} fn rate {fn_rate} | rel err mean: {relErrMean} max: {relErrMax} var: {relErrVar}\n") #| precision {precision}, recall {recall}, accuracy {accuracy}\n")
+                #for charts generation
+                regions_x.append(regions)
+                regions_trainIterations.append(trainIterations)
+                fp_r_not_clamped=fp*100/total_pos
+                fp_r_clamped= 4 if fp_r_not_clamped > 4 else fp_r_not_clamped
+                regions_fp_rate.append(fp_r_clamped)
+                regions_fn_rate.append(fn*100/total_neg)
 
 
-            #if np.cov(relErrNum)==0:
-            #    print(f"covariance 0\n, relErr is {relErrNum[0]}")    
-            #else:
+                if (args.designspaceexploration2dregions is not None and (int(args.designspaceexploration2dregions)==regions) or args.single is not None):
+                    region_fp_rate.append(fp_r_not_clamped)
+                    region_trainIterations.append(trainIterations)
+                    region_relerrmean.append(relErrMean)
+                    region_relerrvariance.append(relErrVar)
+                    region_fn_rate.append(fn_rate)
 
-                #hi=seaborn.histplot(relErrNum, stat='probability', bins=20)
-                #hi.set(xlabel="False negatives relative error")
-                #plt.show()
+                if (args.falsenegativethreshold is not None and (args.single is not None or trainIterations==int(args.train) and regions==int(args.regions))):
+                    #relErrNum = np.asarray(record["relerr"], dtype=np.uint32)
+                    #relErrNum = relErrNum.view(dtype=np.float32)
+                    fn_withthresh[0]=fn
+                    total_neg_tresh=tn+len(relErrNum)
+                    if (total_neg!=total_neg_tresh):
+                        print("ERROR! total_neg!=total_neg_tresh")
+
+                    for er in relErrNum:
+                        for thri in range(1, len(fntresholds)):
+                            if (isnan(er)):
+                                print("ISNAN")
+                            else:
+                                if (er>fntresholds[thri]):
+                                    fn_withthresh[thri]=fn_withthresh[thri]+1
+
+                    """
+                    print(f"TOTAL {total_neg_tresh} | ")
+                    for thri in range(len(fntresholds)):
+                        print(f"THRESH: {fntresholds[thri]} FN: {fn_withthresh[thri]}")
+                    """
+                #print(len(relErrNum))
+                #minErr=np.floor(np.amin(relErrNum))
+                #maxErr=np.ceil(np.amax(relErrNum))
+
+                #try:
+                    #density = gaussian_kde(relErrNum)
+                    #x_vals = np.linspace(minErr,maxErr,200)
+                    #density.covariance_factor = lambda : .5 #Smoothing parameter
+                            #sns.kdeplot(relErrNum, bw_adjust=.25)
 
 
-                #plt.plot(x_vals, density(x_vals))
-            #except np.linalg.LinAlgError:
-            #    print("singular matrix\n")
+                #if np.cov(relErrNum)==0:
+                #    print(f"covariance 0\n, relErr is {relErrNum[0]}")    
+                #else:
+
+                    #hi=seaborn.histplot(relErrNum, stat='probability', bins=20)
+                    #hi.set(xlabel="False negatives relative error")
+                    #plt.show()
+
+
+                    #plt.plot(x_vals, density(x_vals))
+                #except np.linalg.LinAlgError:
+                #    print("singular matrix\n")
     
     if (args.falsenegativethreshold is not None):
-        #fig, ax = plt.subplots(figsize=(8, 6))
+        #fig, ax = plt.subplots()
+        fig, ax = plt.subplots()
         relerrarr=(np.array(fn_withthresh)/np.array(total_neg))*np.array(100)
         #ax.set_ylim([pow(10, math.floor(math.log10(np.min(relerrarr)))), pow(10, math.ceil(math.log10(np.max(relerrarr))))])
         plt.grid(visible=True, which='major', color='0.6')
         plt.grid(visible=True, which='minor', color='0.8')
-        fig = plt.plot(np.array(fntresholds)*np.array(100), (relerrarr))
+        ax.plot(np.array(fntresholds)*np.array(100), (relerrarr))
         plt.gcf().subplots_adjust(left=0.2)
-        ax=plt.gca()
+        #ax=plt.gca()
         ax.xaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
         ax.set_yscale('log')
+        #ax.set_xscale(scl.SymmetricalLogScale(axis.XAxis, base=2))
+        ax.set_xscale('log')
         plt.tick_params(axis='y', which='minor')
+        plt.tick_params(axis='x', which='minor')
         #ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
         #ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}%'.format(int(x)))))
-        ax.yaxis.set_minor_formatter(ticker.LogFormatter(10, labelOnlyBase=False, minor_thresholds=(np.inf, np.inf)))
+        #ax.yaxis.set_minor_formatter(ticker.LogFormatter(10, labelOnlyBase=False, minor_thresholds=(np.inf, np.inf)))
+        
+        plt.xlabel("Accepted relative error threshold [%]")
+        plt.ylabel("False negatives rate [%]")
+
+        fig, ax = plt.subplots()
+        relerrarr=(np.array(fn_withthresh)/np.array(total_neg))*np.array(100)
+        #ax.set_ylim([pow(10, math.floor(math.log10(np.min(relerrarr)))), pow(10, math.ceil(math.log10(np.max(relerrarr))))])
+        ax.plot(np.array(fntresholds)*np.array(100), (relerrarr))
+        plt.grid(visible=True, which='major', color='0.6')
+        plt.grid(visible=True, which='minor', color='0.8')
+        plt.gcf().subplots_adjust(left=0.2)
+        #ax=plt.gca()
+        ax.set_yscale('log')
+        if (args.falsenegativethresholdlogxformatter is not None):
+            ax.xaxis.set_major_formatter(ticker.LogFormatter(10))
+        else:
+            ax.xaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
+        #ax.set_xscale(scl.SymmetricalLogScale(axis.XAxis, base=2))
+        plt.tick_params(axis='y', which='minor')
+        plt.tick_params(axis='x', which='minor')
+        #ax.yaxis.set_minor_locator(ticker.AutoMinorLocator())
+        #ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x,pos: ('{:d}%'.format(int(x)))))
+        #ax.yaxis.set_minor_formatter(ticker.LogFormatter(10, labelOnlyBase=False, minor_thresholds=(np.inf, np.inf)))
         
         plt.xlabel("Accepted relative error threshold [%]")
         plt.ylabel("False negatives rate [%]")
@@ -258,7 +301,7 @@ def main():
 
 
     if (args.designspaceexploration2dregions is not None):
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots()
         plt.grid(visible=True, which='major', color='0.6')
         plt.grid(visible=True, which='minor', color='0.8')
         ax = plt.gca()
@@ -280,7 +323,7 @@ def main():
         #plt.show()
         
         
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots()
         plt.grid(visible=True, which='major', color='0.6')
         plt.grid(visible=True, which='minor', color='0.8')
         #region_2d_trainIterations=np.array(region_trainIterations)
@@ -298,7 +341,7 @@ def main():
         
         #plt.show()
 
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots()
         plt.grid(visible=True, which='major', color='0.6')
         plt.grid(visible=True, which='minor', color='0.8')
         #region_2d_trainIterations=np.array(region_trainIterations)
@@ -316,7 +359,7 @@ def main():
         
         #plt.show()
 
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots()
         plt.grid(visible=True, which='major', color='0.6')
         plt.grid(visible=True, which='minor', color='0.8')
         #region_2d_trainIterations=np.array(region_trainIterations)
@@ -334,7 +377,7 @@ def main():
         
         #plt.show()
 
-        fig, ax = plt.subplots(figsize=(8, 6))
+        fig, ax = plt.subplots()
         plt.style.use('classic')
         plt.grid(visible=True, which='major', color='0.6')
         plt.grid(visible=True, which='minor', color='0.8')

@@ -28,7 +28,7 @@ def main():
     #expRegion=2
     expRegionMultiplier=1
 
-    expTrain=9
+    expTrain=11
     #expTrain=2
     expTrainMultiplier=100
 
@@ -41,7 +41,8 @@ def main():
     fl.write(b'[')
 
     first=True
-    for t in range(3, expTrain+1, 1):
+    #for t in range(3, expTrain+1, 1):
+    for t in range(9, expTrain+1, 1):
         reg=16
         train=pow(2,t)*expTrainMultiplier
         procArr.put(subprocess.Popen([args.binary, "-r", str(int(reg)), "-t", str(int(train)), "-e", str(int(executions))], shell=True, stdout=subprocess.PIPE))              
