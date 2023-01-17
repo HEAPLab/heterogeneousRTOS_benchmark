@@ -1,5 +1,5 @@
-//#define latnavBench
-#define FFTBench
+#define latnavBench
+//#define FFTBench
 //#define ANNBench
 //#define gaussianBench
 
@@ -1729,6 +1729,8 @@ void latnav(int executionId) {
 	desired_roll = run_pid(&pid_heading, err, executionId);
 	actual_roll = roll_limiter(desired_roll, 400, executionId-(32*11));
 
+	FAULTDET_testing_injectFault32(actual_roll, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32*0), injectingErrors);
+
 	//	if (executionId<-1) {
 	//		FAULTDET_trainPoint(
 	//				1,
@@ -1790,6 +1792,8 @@ void latnav(int executionId) {
 	desired_roll_rate = run_pid(&pid_roll, err1, executionId-(32*11)-(32*5));
 
 	actual_roll_rate = roll_rate_limiter(desired_roll_rate, curr_roll, executionId-(32*11)-(32*5)-(32*11));
+	FAULTDET_testing_injectFault32(actual_roll_rate, executionId, (32*11)+(32*5)+(32*11)+(32*2)+(32*11)+(32*1)+(32*1), injectingErrors);
+
 
 	//	if (executionId<-1) {
 	//		FAULTDET_trainPoint(
@@ -2139,7 +2143,7 @@ int main(int argc, char * const argv[])
 		r4=random_get();
 		latnav(-1);
 		if (!FAULTDET_testing_loggin_faultdetected) {
-			for (int executionId=0 ;executionId<1312; executionId++) {
+			for (int executionId=0 ;executionId<1312+32*2; executionId++) {
 				latnav(executionId);
 			}
 		}

@@ -40,6 +40,7 @@ def main():
     parser.add_argument('-pm', '--precisionmultiplier')      # option that takes a value
     parser.add_argument('-fntlogxf', '--falsenegativethresholdlogxformatter')      # option that takes a value
     parser.add_argument('-f2', '--filename2')      # option that takes a value
+    parser.add_argument('-tcap', '--traincap')      # option that takes a value
 
 
     args=parser.parse_args()
@@ -53,6 +54,8 @@ def main():
     hiiter=middleiter+int((float(args.falsenegativethresholdupbound)-0.1)/0.01)
     fntresholds=np.zeros(hiiter+1, dtype=float)
     for ctr in range(hiiter+1):
+        if (curr>int(args.precisionmultiplier)):
+            break
         fntresholds[ctr]=curr
         if (ctr<lowiter):
             curr=curr+lowprec
@@ -66,7 +69,7 @@ def main():
     fn_withthresh=np.zeros(len(fntresholds), dtype=int)
     filenames=[args.filename]
     if (args.filename2 is not None):
-        filenames.append(args.filename2)
+        filenames.append(args.filename2.split(","))
 
     regions_x=[]
     regions_fp_rate=[]
@@ -85,6 +88,9 @@ def main():
             for record in ijson.items(f, "item"):
 
                 regions=record["regions"]
+
+                if (args.traincap is not None and regions>int(args.traincap)):
+                    continue
 
                 trainIterations=record["trainIterations"]
                 testIterations=record["testIterations"]
@@ -219,7 +225,7 @@ def main():
         ax.plot(np.array(fntresholds)*np.array(100), (relerrarr))
         plt.gcf().subplots_adjust(left=0.2)
         #ax=plt.gca()
-        ax.xaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
+        ax.xaxis.set_major_formatter(ticker.PercentFormatter())
         ax.set_yscale('log')
         #ax.set_xscale(scl.SymmetricalLogScale(axis.XAxis, base=2))
         ax.set_xscale('log')
@@ -242,7 +248,7 @@ def main():
         #ax=plt.gca()
         ax.set_yscale('log')
         if (args.falsenegativethresholdlogxformatter is not None):
-            ax.xaxis.set_major_formatter(ticker.LogFormatter(10))
+            ax.xaxis.set_major_formatter(ticker.LogFormatter(10, labelOnlyBase=False, minor_thresholds=(np.inf, np.inf)))
         else:
             ax.xaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
         #ax.set_xscale(scl.SymmetricalLogScale(axis.XAxis, base=2))
@@ -365,7 +371,7 @@ def main():
         #region_2d_trainIterations=np.array(region_trainIterations)
         region_2d_fn_rate=np.array(region_fn_rate)
         ax.plot(np.log2((np.array(regions_trainIterations)/100)).astype(int), region_2d_fn_rate,marker="o")
-        ax.yaxis.set_major_formatter(ticker.PercentFormatter(decimals=0))
+        ax.yaxis.set_major_formatter(ticker.PercentFormatter())
         #ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(4))
         ax.tick_params(axis='y', which='minor', bottom=False)
         plt.gcf().subplots_adjust(left=0.2)
