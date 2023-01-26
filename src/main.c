@@ -14,7 +14,7 @@
 //#include "xil_printf.h"
 
 #define onOutputOnly
-#define testMode
+//#define testMode
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -25,10 +25,10 @@
 
 #define FAULTDETECTOR_EXECINSW
 
-#define gaussianBench
+//#define gaussianBench
 //#define ANNBench
 //#define imgscalingBench
-//#define FFTBench
+#define FFTBench
 //#define latnavBench
 
 #include "simple_random.h"
@@ -281,7 +281,7 @@ static int convolution2D_train(int p_x, int p_y){
 
 		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 		//		FAULTDET_Test(&contr);
-		FAULTDET_trainPoint(&contr);
+//		FAULTDET_trainPoint(&contr);
 		uniIdCtr++;
 	} else {
 		for (int i=0; i<KERNEL_SIZE; i++) {
@@ -352,7 +352,7 @@ static int convolution2D_test(int p_x, int p_y){
 
 		//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
 		//		FAULTDET_Test(&contr);
-		FAULTDET_testPoint(&contr);
+//		FAULTDET_testPoint(&contr);
 		uniIdCtr++;
 	} else {
 		for (int i=0; i<KERNEL_SIZE; i++) {
@@ -953,7 +953,7 @@ static void train_ann_routine(){
 #endif
 
 #define FFT_LENGTH 512
-#define CHECKPERIODICITY 16
+#define CHECKPERIODICITY 8
 typedef struct{
 	float re,im;
 } complex;
@@ -1036,21 +1036,25 @@ static void fft_routine_test(){
 
 		/*X_k=[sum{0,N/2-1} x_2n * e^(i*(-2*pi*2n*k)/N)] + [sum{0,N/2-1} x_(2n+1) * e^(i*(-2*pi*(2n+1)*k)/N)]*/
 		int n;
-		complex even_sum,odd_sum, even_sum2, odd_sum2;
+		complex even_sum,odd_sum;
+		even_sum.re=0;
+		even_sum.im=0;
+#ifdef testMode
+		complex even_sum2, odd_sum2;
 
 		contr.AOV[0]=0;
 		contr.AOV[1]=0;
 		contr.AOV[2]=0;
 		contr.AOV[3]=0;
 
-		even_sum.re=0;
-		even_sum.im=0;
+
 
 		int idx=0;
 		int mul=0;
 		complex tmp;
 		tmp.im=0;
 		tmp.re=0;
+#endif
 
 
 		for(n=0;n<FFT_LENGTH;n=n+2){
@@ -1079,16 +1083,16 @@ static void fft_routine_test(){
 					}
 				}
 
-				contr.uniId=n;
-				contr.checkId=chkid;
-				contr.AOV[4]=tmp.re;
-				contr.AOV[5]=tmp.im;
-				FAULTDET_testPoint(&contr);
+//				contr.uniId=n;
+//				contr.checkId=chkid;
+//				contr.AOV[4]=tmp.re;
+//				contr.AOV[5]=tmp.im;
+//				FAULTDET_testPoint(&contr);
 
 				even_sum=complex_sum(even_sum,tmp); //192
-				even_sum2=complex_sum(even_sum2,tmp); //192
-				if (memcmp(&even_sum, &even_sum, sizeof(complex))!=0)
-					faulty=0xFF;
+//				even_sum2=complex_sum(even_sum2,tmp); //192
+//				if (memcmp(&even_sum, &even_sum, sizeof(complex))!=0)
+//					faulty=0xFF;
 
 				idx=0;
 				tmp.im=0;
@@ -1111,11 +1115,13 @@ static void fft_routine_test(){
 		odd_sum.re=0;
 		odd_sum.im=0;
 
+#ifdef testMode
 		idx=0;
 		mul=0;
 
 		tmp.im=0;
 		tmp.re=0;
+#endif
 
 		for(n=1;n<FFT_LENGTH;n=n+2){
 			complex cmplxexp=complex_exp((-2*M_PI*n*k)/FFT_LENGTH); //96
@@ -1141,19 +1147,19 @@ static void fft_routine_test(){
 					}
 				}
 
-				contr.uniId=n;
-				contr.checkId=chkid;
-				contr.AOV[4]=tmp.re;
-				contr.AOV[5]=tmp.im;
-
-				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
-				//		FAULTDET_Test(&contr);
-				FAULTDET_testPoint(&contr);
+//				contr.uniId=n;
+//				contr.checkId=chkid;
+//				contr.AOV[4]=tmp.re;
+//				contr.AOV[5]=tmp.im;
+//
+//				//		FAULTDETECTOR_startCopy(&FAULTDETECTOR_InstancePtr);
+//				//		FAULTDET_Test(&contr);
+//				FAULTDET_testPoint(&contr);
 
 				odd_sum=complex_sum(odd_sum,tmp); //192
-				odd_sum2=complex_sum(odd_sum2,tmp); //192
-				if (memcmp(&odd_sum, &odd_sum2, sizeof(complex))!=0)
-					faulty=0xFF;
+//				odd_sum2=complex_sum(odd_sum2,tmp); //192
+//				if (memcmp(&odd_sum, &odd_sum2, sizeof(complex))!=0)
+//					faulty=0xFF;
 
 				idx=0;
 				tmp.im=0;
@@ -1173,11 +1179,11 @@ static void fft_routine_test(){
 #endif
 		}
 
-		complex diff=complex_sum(even_sum,odd_sum);
+		complex out=complex_sum(even_sum,odd_sum);
 #ifdef testMode
-		complex out2=complex_sum(even_sum,odd_sum);
-		if (memcmp(&diff, &out2, sizeof(complex))!=0)
-			faulty=0xFF;
+//		complex out2=complex_sum(even_sum,odd_sum);
+//		if (memcmp(&out, &out2, sizeof(complex))!=0)
+//			faulty=0xFF;
 
 #ifndef FAULTDETECTOR_EXECINSW
 		FAULTDET_blockIfFaultDetectedInTask(&contr);
@@ -2351,27 +2357,29 @@ static void prvTaskFour( void *pvParameters )
 		checks_idx[i]=part;
 	}
 
+//#ifdef testMode
+//	for (int executionId=-20000; executionId<-1; executionId++) {
+//		for(int i=0; i<FFT_LENGTH;i++){
+//			complex x;
+//			x.re=random_get();
+//			x.im=random_get();
+//
+//			array_in[i]=x;
+//		}
+//		fft_routine_train();
+//	}
+//#endif
+	for (int i=0; i<10000; i++) {
+		for(int i=0; i<FFT_LENGTH;i++){
+			complex x;
+			x.re=random_get();
+			x.im=random_get();
+
+			array_in[i]=x;
+		}
 #ifdef testMode
-	for (int executionId=-20000; executionId<-1; executionId++) {
-		for(int i=0; i<FFT_LENGTH;i++){
-			complex x;
-			x.re=random_get();
-			x.im=random_get();
-
-			array_in[i]=x;
-		}
-		fft_routine_train();
-	}
-#endif
-	for (int i=0; i<4000; i++) {
-		for(int i=0; i<FFT_LENGTH;i++){
-			complex x;
-			x.re=random_get();
-			x.im=random_get();
-
-			array_in[i]=x;
-		}
 		faulty=0x0;
+#endif
 		fft_routine_test();
 	}
 #endif
