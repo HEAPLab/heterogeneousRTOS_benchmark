@@ -49,10 +49,10 @@ int main( void )
 			NULL,
 			tskIDLE_PRIORITY,
 			NULL,
-			1000000, //deadline
-			1000000, //period
+			12500, //deadline
+			12500, //period
 			0,
-			900200
+			10000
 			); //wcet
 
 //	xRTTaskCreate( prvTaskTwo,
@@ -154,18 +154,31 @@ int main( void )
 
 //int i=0;
 /*-----------------------------------------------------------*/
+//#include <stdint.h>
+#include <inttypes.h>
 static void prvTaskOne( void *pvParameters )
 {
-//	xPortSchedulerDisableIntr();
+	xPortSchedulerDisableIntr();
 	for (;;) {
-		unsigned int clk=get_clock_L();
-		xil_printf("%u\n", clk);
-		perf_reset_clock();
+		perf_stop_clock();
+		uint32_t clk=get_clock_L();
+		uint32_t clku=get_clock_U();
+		uint64_t tot=(uint64_t) clk | ((uint64_t) clk) << 32;
+		xil_printf("s1%" PRIu64 "\n", clk);
+		perf_start_clock();
+		for (int i=0; i<500000; i++) {}
+		//perf_reset_clock();
 //		if (i>=500000)
 //			xPortSchedulerDisableIntr();
 //		i++;
+		perf_stop_clock();
+		uint32_t clk=get_clock_L();
+		uint32_t clku=get_clock_U();
+		uint64_t tot=(uint64_t) clk | ((uint64_t) clk) << 32;
+		xil_printf("e1%" PRIu64 "\n", clk);
+		perf_start_clock();
 		vTaskJobEnd();
-//		for (;;){}
+		//for (;;){}
 
 //		xil_printf(" One\n");
 //		for (int i=0; i<5000; i++) {}
