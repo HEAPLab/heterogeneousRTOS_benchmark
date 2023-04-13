@@ -49,10 +49,10 @@ int main( void )
 			NULL,
 			tskIDLE_PRIORITY,
 			NULL,
-			12500, //deadline
-			12500, //period
+			12500000, //deadline
+			12500000, //period
 			0,
-			10000
+			10000000
 			); //wcet
 
 //	xRTTaskCreate( prvTaskTwo,
@@ -154,31 +154,24 @@ int main( void )
 
 //int i=0;
 /*-----------------------------------------------------------*/
-//#include <stdint.h>
 #include <inttypes.h>
+
 static void prvTaskOne( void *pvParameters )
 {
-	xPortSchedulerDisableIntr();
-	for (;;) {
-		perf_stop_clock();
-		uint32_t clk=get_clock_L();
-		uint32_t clku=get_clock_U();
-		uint64_t tot=(uint64_t) clk | ((uint64_t) clk) << 32;
-		xil_printf("s1%" PRIu64 "\n", clk);
-		perf_start_clock();
-		for (int i=0; i<500000; i++) {}
-		//perf_reset_clock();
-//		if (i>=500000)
-//			xPortSchedulerDisableIntr();
-//		i++;
-		perf_stop_clock();
-		uint32_t clk=get_clock_L();
-		uint32_t clku=get_clock_U();
-		uint64_t tot=(uint64_t) clk | ((uint64_t) clk) << 32;
-		xil_printf("e1%" PRIu64 "\n", clk);
-		perf_start_clock();
-		vTaskJobEnd();
-		//for (;;){}
+		for (;;) {
+			perf_stop_clock();
+			volatile uint32_t clk=get_clock_L();
+			volatile uint32_t clku=get_clock_U();
+			volatile uint64_t tot=(uint64_t) clk | ((uint64_t) clku) << 32;
+			printf("s1 %" PRIu64 "\n", tot);
+			fflush(stdout);
+			perf_start_clock();
+
+			for (int i=0; i<500000; i++) {}
+
+			vTaskJobEnd();
+		}
+			//for (;;){}
 
 //		xil_printf(" One\n");
 //		for (int i=0; i<5000; i++) {}
@@ -192,7 +185,6 @@ static void prvTaskOne( void *pvParameters )
 //		FAULTDET_testPoint();
 //
 //		FAULTDET_blockIfFaultDetectedInTask();
-	}
 }
 
 /*-----------------------------------------------------------*/
