@@ -43,84 +43,91 @@ static u8 n_regions[FAULTDETECTOR_MAX_CHECKS];
 
 int main( void )
 {
+	for (int i=0; i<FAULTDETECTOR_MAX_AOV_DIM; i++) {
+		trainedRegions[0][0].center[i]=0;
+		trainedRegions[0][0].max[i]=200;
+		trainedRegions[0][0].min[i]=-200;
+		n_regions[0]=1;
+	}
+
 	xRTTaskCreate( prvTaskOne,
 			( const char * ) "One",
 			configMINIMAL_STACK_SIZE,
 			NULL,
 			tskIDLE_PRIORITY,
 			NULL,
-			12500000, //deadline
-			12500000, //period
+			5000000, //deadline
+			5000000, //period
 			0,
-			10000000
-			); //wcet
+			2000000
+	); //wcet
 
-//	xRTTaskCreate( prvTaskTwo,
-//			( const char * ) "Two",
-//			configMINIMAL_STACK_SIZE,
-//			NULL,
-//			tskIDLE_PRIORITY,
-//			NULL,
-//			15000000, //deadline
-//			20050000, //period
-//			1,
-//			5000000,
-//			10000000
-//			); //wcet
+	//	xRTTaskCreate( prvTaskTwo,
+	//			( const char * ) "Two",
+	//			configMINIMAL_STACK_SIZE,
+	//			NULL,
+	//			tskIDLE_PRIORITY,
+	//			NULL,
+	//			15000000, //deadline
+	//			20050000, //period
+	//			1,
+	//			5000000,
+	//			10000000
+	//			); //wcet
 
 
-//	xRTTaskCreate( prvTaskOne,
-//			( const char * ) "One",
-//			configMINIMAL_STACK_SIZE,
-//			NULL,
-//			tskIDLE_PRIORITY,
-//			NULL,
-//			100000000, //deadline
-//			100000000, //period
-//			0,
-//			20
-//			); //wcet
-//
-//	xRTTaskCreate( prvTaskTwo,
-//			( const char * ) "Two",
-//			configMINIMAL_STACK_SIZE,
-//			NULL,
-//			tskIDLE_PRIORITY,
-//			NULL,
-//			150000000, //deadline
-//			150000000, //period
-//			1,
-//			//15000000,
-//			20,
-//			//15000000*2,
-//			20*2); //wcet
+	//	xRTTaskCreate( prvTaskOne,
+	//			( const char * ) "One",
+	//			configMINIMAL_STACK_SIZE,
+	//			NULL,
+	//			tskIDLE_PRIORITY,
+	//			NULL,
+	//			100000000, //deadline
+	//			100000000, //period
+	//			0,
+	//			20
+	//			); //wcet
+	//
+	//	xRTTaskCreate( prvTaskTwo,
+	//			( const char * ) "Two",
+	//			configMINIMAL_STACK_SIZE,
+	//			NULL,
+	//			tskIDLE_PRIORITY,
+	//			NULL,
+	//			150000000, //deadline
+	//			150000000, //period
+	//			1,
+	//			//15000000,
+	//			20,
+	//			//15000000*2,
+	//			20*2); //wcet
 
-//	xRTTaskCreate( prvTaskThree,
-//			( const char * ) "Three",
-//			configMINIMAL_STACK_SIZE,
-//			NULL,
-//			tskIDLE_PRIORITY,
-//			NULL,
-//			20000000, //deadline
-//			20000000, //period
-//			2,
-//			20,
-//			20*2,
-//			20*3); //wcet
-//
-//
-//	xRTTaskCreate( prvTaskFour,
-//			( const char * ) "Four",
-//			configMINIMAL_STACK_SIZE,
-//			NULL,
-//			tskIDLE_PRIORITY,
-//			NULL,
-//			25000000, //deadline
-//			25000000, //period
-//			2,
-//			20,
-//			20*2,
-//			20*3); //wcet
+	//	xRTTaskCreate( prvTaskThree,
+	//			( const char * ) "Three",
+	//			configMINIMAL_STACK_SIZE,
+	//			NULL,
+	//			tskIDLE_PRIORITY,
+	//			NULL,
+	//			20000000, //deadline
+	//			20000000, //period
+	//			2,
+	//			20,
+	//			20*2,
+	//			20*3); //wcet
+	//
+	//
+	//	xRTTaskCreate( prvTaskFour,
+	//			( const char * ) "Four",
+	//			configMINIMAL_STACK_SIZE,
+	//			NULL,
+	//			tskIDLE_PRIORITY,
+	//			NULL,
+	//			25000000, //deadline
+	//			25000000, //period
+	//			2,
+	//			20,
+	//			20*2,
+	//			20*3); //wcet
 
 	for (int i=0; i<FAULTDETECTOR_MAX_CHECKS; i++) {
 		n_regions[i]=0;
@@ -156,88 +163,105 @@ int main( void )
 /*-----------------------------------------------------------*/
 #include <inttypes.h>
 
+int task1jobidx=0;
 static void prvTaskOne( void *pvParameters )
 {
-		for (;;) {
-			perf_stop_clock();
-			volatile uint32_t clk=get_clock_L();
-			volatile uint32_t clku=get_clock_U();
-			volatile uint64_t tot=(uint64_t) clk | ((uint64_t) clku) << 32;
-			printf("s1 %" PRIu64 "\n", tot);
-			fflush(stdout);
-			perf_start_clock();
+//		xPortSchedulerDisableIntr();
 
-			for (int i=0; i<500000; i++) {}
+	for (;;) {
+		task1jobidx++;
 
-			vTaskJobEnd();
-		}
-			//for (;;){}
+		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
+		//			perf_stop_clock();
+		volatile uint32_t clk=get_clock_L();
+		volatile uint32_t clku=get_clock_U();
+		volatile uint64_t tot=(uint64_t) clk | ((uint64_t) clku) << 32;
 
-//		xil_printf(" One\n");
-//		for (int i=0; i<5000; i++) {}
-//		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
-//		contr->AOV[0]=1;
-//		contr->AOV[1]=2;
-//		contr->AOV[2]=3;
-//		contr->AOV[3]=4;
-//		contr->checkId=1;
-//		contr->uniId=1;
-//		FAULTDET_testPoint();
-//
-//		FAULTDET_blockIfFaultDetectedInTask();
+		char foo[20];
+		sprintf(foo, "s1 %" PRIu64 "\n", tot);
+		xil_printf(foo);
+
+		perf_start_clock();
+
+		contr->AOV[0]=100;
+		contr->AOV[0]=50;
+		contr->AOV[0]=25;
+		contr->AOV[0]=0;
+
+		FAULTDET_testPoint();
+
+		for (int i=0; i<500000; i++) {}
+
+		FAULTDET_blockIfFaultDetectedInTask();
+		vTaskJobEnd();
+	}
+	//for (;;){}
+
+	//		xil_printf(" One\n");
+	//		for (int i=0; i<5000; i++) {}
+	//		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
+	//		contr->AOV[0]=1;
+	//		contr->AOV[1]=2;
+	//		contr->AOV[2]=3;
+	//		contr->AOV[3]=4;
+	//		contr->checkId=1;
+	//		contr->uniId=1;
+	//		FAULTDET_testPoint();
+	//
+	//		FAULTDET_blockIfFaultDetectedInTask();
 }
 
 /*-----------------------------------------------------------*/
 static void prvTaskTwo( void *pvParameters )
 {
-//	xPortSchedulerDisableIntr();
-//	for (;;) {
-//		unsigned int clk=get_clock_L();
-//		xil_printf("%u\n", clk);
-//		perf_reset_clock();
-//		if (i>=500000)
-//			xPortSchedulerDisableIntr();
-//		i++;
-//		vTaskJobEnd();
-//	}
-		//		xil_printf(" Two\n");
-//		for (int i=0; i<5000; i++) {}
-//		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
-//		contr->AOV[0]=1;
-//		contr->AOV[1]=2;
-//		contr->AOV[2]=3;
-//		contr->AOV[3]=4;
-//		contr->checkId=0;
-//		contr->uniId=1;
-//		FAULTDET_testPoint();
-//
-//		FAULTDET_blockIfFaultDetectedInTask();
+	//	xPortSchedulerDisableIntr();
+	//	for (;;) {
+	//		unsigned int clk=get_clock_L();
+	//		xil_printf("%u\n", clk);
+	//		perf_reset_clock();
+	//		if (i>=500000)
+	//			xPortSchedulerDisableIntr();
+	//		i++;
+	//		vTaskJobEnd();
+	//	}
+	//		xil_printf(" Two\n");
+	//		for (int i=0; i<5000; i++) {}
+	//		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
+	//		contr->AOV[0]=1;
+	//		contr->AOV[1]=2;
+	//		contr->AOV[2]=3;
+	//		contr->AOV[3]=4;
+	//		contr->checkId=0;
+	//		contr->uniId=1;
+	//		FAULTDET_testPoint();
+	//
+	//		FAULTDET_blockIfFaultDetectedInTask();
 
 
-//		fflush(stdout);
-//
-//		vTaskJobEnd();
-//	}
+	//		fflush(stdout);
+	//
+	//		vTaskJobEnd();
+	//	}
 }
 
 static void prvTaskThree( void *pvParameters )
 {
 	for (;;) {
 		xil_printf(" Three");
-////		fflush(stdout);
-//
-//		vTaskJobEnd();
+		////		fflush(stdout);
+		//
+		//		vTaskJobEnd();
 	}
 }
 
 
 static void prvTaskFour( void *pvParameters )
 {
-////	xPortSchedulerDisableIntr();
+	////	xPortSchedulerDisableIntr();
 	for (;;) {
 		xil_printf(" Four");
-////		fflush(stdout);
-//
-//		vTaskJobEnd();
+		////		fflush(stdout);
+		//
+		//		vTaskJobEnd();
 	}
 }
