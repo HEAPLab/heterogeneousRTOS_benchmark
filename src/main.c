@@ -50,31 +50,31 @@ int main( void )
 //		n_regions[0]=1;
 //	}
 
-	xRTTaskCreate( prvTaskOne,
-			( const char * ) "One",
-			configMINIMAL_STACK_SIZE,
-			NULL,
-			tskIDLE_PRIORITY,
-			NULL,
-			2500, //deadline
-			2500, //period
-			1,
-			1000,
-			1000*2
-	); //wcet
-
-
-//	xRTTaskCreate( prvTaskTwo,
-//			( const char * ) "Two",
+//	xRTTaskCreate( prvTaskOne,
+//			( const char * ) "One",
 //			configMINIMAL_STACK_SIZE,
 //			NULL,
 //			tskIDLE_PRIORITY,
 //			NULL,
-//			5000, //deadline
-//			5000, //period
-//			0,
-//			2500
-//	); //wcet
+//			2500, //deadline
+//			2500, //period
+//			1,
+//			1000,
+//			1000
+//			); //wcet
+
+
+	xRTTaskCreate( prvTaskTwo,
+			( const char * ) "Two",
+			configMINIMAL_STACK_SIZE,
+			NULL,
+			tskIDLE_PRIORITY,
+			NULL,
+			5000, //deadline
+			5000, //period
+			0,
+			2500
+	); //wcet
 
 
 
@@ -139,22 +139,31 @@ int main( void )
 /*-----------------------------------------------------------*/
 #include <inttypes.h>
 
+typedef struct {
+	unsigned int job;
+	char ev;
+	unsigned int tskId;
+	u32 timer;
+} regEvent;
 #define outlimit 200
 regEvent outcontainera[outlimit];
 regEvent outcontainerb[outlimit];
 
-u32 outa=0;
-u32 outb=0;
+unsigned int outa=0;
+unsigned int outb=0;
 
 void printout() {
-//	float kk=2000000.0/666666687.0;
-	u32 outaread=0;
-	u32 outbread=0;
+	unsigned int outaread=0;
+	unsigned int outbread=0;
 
+//	for (int outaread=0; outaread<=outa; outaread++) {
+//		u32 res=(outcontainera[outaread].timer*(2000000000.0/666666687.0));
+//		xil_printf("%c t%u j%u %"PRIu32"\n",outcontainera[outaread].ev,outcontainera[outaread].tskId, outcontainera[outaread].job, res);
+//	}
 	while (outaread<outa || outbread<outb) {
 		if (outaread<=outa && ((outbread>outb) || (outcontainera[outaread].timer<outcontainerb[outbread].timer))) {
 			u32 res=(outcontainera[outaread].timer*(2000000000.0/666666687.0));
-			xil_printf("%c t%u j%u %u\n",outcontainera[outaread].ev,outcontainera[outaread].tskId,outcontainerb[outbread].job, res);
+			xil_printf("%c t%u j%u %"PRIu32"\n",outcontainera[outaread].ev,outcontainera[outaread].tskId, outcontainera[outaread].job, res);
 			outaread++;
 		}
 		if (outbread<=outb && ((outaread>outa) || (outcontainera[outaread].timer>=outcontainerb[outbread].timer))) {
@@ -163,29 +172,12 @@ void printout() {
 			outbread++;
 		}
 	}
-
-//	for (int i=0; i<outlimit*2; i++) {
-//		if (i>outa && i>outb)
-//			break;
-//		if (i<outa && outcontainera[i])
-//
-//		if (i>outb)
-//
-////		if (outcontainer[i].ev=='s' || outcontainer[i].ev=='e')
-//		u32 res=(outcontainer[i].timer*(2000000.0/666666687.0));
-//			xil_printf("%c%u %u\n",outcontainer[i].ev,outcontainer[i].tskId,res);
-//	}
 }
 
-#define offs 10000
-u32 task1jobidx=0;
-
+unsigned int task1jobidx=0;
 static void prvTaskOne( void *pvParameters )
 {
-	//		xPortSchedulerDisableIntr();
-
 	for (;;) {
-
 		outa++;
 		outcontainera[outa].timer=get_clock_L();
 		outcontainera[outa].ev='s';
@@ -194,32 +186,29 @@ static void prvTaskOne( void *pvParameters )
 		outa++;
 		perf_start_clock();
 
-
 		if (outa>=outlimit){
 			xPortSchedulerDisableIntr();
 			printout();
 			while(1) {}
 		}
 
-//		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
+		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
 		//			perf_stop_clock();
 //		volatile uint32_t clk=get_clock_L();
 //		volatile uint32_t clku=get_clock_U();
 //		volatile uint64_t tot=(uint64_t) clk | ((uint64_t) clku) << 32;
-//		if (task1jobidx>0) {
 
+//		if (task2jobidx>0) {
+//			outi++;
 //		}
-//		sprintf(&(outcontainer[outi]), "s1 %" PRIu64 "\n", tot);
+////		sprintf(&(outcontainer[outi]), "s2 %" PRIu64 "\n", tot);
 //		sprintf(&(outcontainer[outi]), "s1 %u\n", get_clock_L());
-//		outcontainer[outi]->timer=get_clock_L();
-//		outcontainer[outi]->ev="e";
-//		outcontainer[outi]->tskId=tsk;
+//
+//		outi++;
 
-//		xil_printf(foo);
+		perf_start_clock();
 
-
-//		while(get_clock_L()-clk<40000-offs) {}
-		for (int i=0; i<600;i++) {}
+		for(int i=0; i<600; i++) {}
 
 		//		contr->checkId=0;
 		//		contr->uniId=1;
@@ -241,25 +230,10 @@ static void prvTaskOne( void *pvParameters )
 		task1jobidx++;
 		vTaskJobEnd(&(outcontainera[outa].timer));
 	}
-	//for (;;){}
-
-	//		xil_printf(" One\n");
-	//		for (int i=0; i<5000; i++) {}
-	//		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
-	//		contr->AOV[0]=1;
-	//		contr->AOV[1]=2;
-	//		contr->AOV[2]=3;
-	//		contr->AOV[3]=4;
-	//		contr->checkId=1;
-	//		contr->uniId=1;
-	//		FAULTDET_testPoint();
-	//
-	//		FAULTDET_blockIfFaultDetectedInTask();
 }
-
 /*-----------------------------------------------------------*/
 
-u32 task2jobidx=0;
+unsigned int task2jobidx=0;
 static void prvTaskTwo( void *pvParameters )
 {
 	for (;;) {
@@ -277,7 +251,7 @@ static void prvTaskTwo( void *pvParameters )
 			while(1) {}
 		}
 
-//		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
+		FAULTDETECTOR_controlStr* contr=FAULTDET_initFaultDetection();
 		//			perf_stop_clock();
 //		volatile uint32_t clk=get_clock_L();
 //		volatile uint32_t clku=get_clock_U();
