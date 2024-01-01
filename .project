@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>app_heterogeneousRTOS</name>
-	<comment>Created by Vitis v2021.2</comment>
+	<name>heterogeneousRTOS_app</name>
+	<comment>Created by Vitis v2023.1</comment>
 	<projects>
+		<project>heterogeneousRTOS_platform</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
